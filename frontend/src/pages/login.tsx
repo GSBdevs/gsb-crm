@@ -33,7 +33,7 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden p-4">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,oklch(0.62_0.21_289/0.18),transparent_55%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,oklch(0.83_0.16_90/0.12),transparent_55%)]" />
       <Card className="w-full max-w-sm border-border/70 bg-card/80 backdrop-blur">
         <CardHeader className="items-center text-center">
           <Hexagon className="mb-2 size-10 fill-primary/20 text-primary" />

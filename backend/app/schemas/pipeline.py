@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class StageCreate(BaseModel):
     name: str
     position: int = 0
-    color: str = "#6366f1"
+    color: str = "#facc15"
     probability: int = Field(default=10, ge=0, le=100)
     is_won: bool = False
     is_lost: bool = False

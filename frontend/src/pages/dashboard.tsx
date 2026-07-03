@@ -25,9 +25,19 @@ import {
   YAxis,
 } from "recharts";
 
+// Paleta dos gráficos — alinhada ao tema preto/cinza/amarelo
+const CHART = {
+  yellow: "oklch(0.83 0.16 90)",
+  amber: "oklch(0.72 0.15 70)",
+  gray: "oklch(0.62 0.006 90)",
+  grayDark: "oklch(0.45 0.005 90)",
+  green: "oklch(0.72 0.17 162)",
+  grid: "oklch(0.26 0.005 90)",
+};
+
 const TOOLTIP_STYLE = {
-  backgroundColor: "oklch(0.19 0.018 285)",
-  border: "1px solid oklch(0.26 0.018 285)",
+  backgroundColor: "oklch(0.19 0.004 90)",
+  border: `1px solid ${CHART.grid}`,
   borderRadius: 8,
   fontSize: 12,
 };
@@ -142,7 +152,7 @@ export default function DashboardPage() {
           <CardContent className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={byStage.data ?? []} margin={{ left: 12 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.26 0.018 285)" />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
                 <XAxis dataKey="stage" tick={{ fontSize: 11 }} interval={0} angle={-15} dy={8} />
                 <YAxis
                   tick={{ fontSize: 11 }}
@@ -171,15 +181,15 @@ export default function DashboardPage() {
               <AreaChart data={timeline.data ?? []}>
                 <defs>
                   <linearGradient id="gCreated" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="oklch(0.62 0.21 289)" stopOpacity={0.5} />
-                    <stop offset="100%" stopColor="oklch(0.62 0.21 289)" stopOpacity={0} />
+                    <stop offset="0%" stopColor={CHART.gray} stopOpacity={0.4} />
+                    <stop offset="100%" stopColor={CHART.gray} stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="gConverted" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="oklch(0.72 0.17 162)" stopOpacity={0.5} />
-                    <stop offset="100%" stopColor="oklch(0.72 0.17 162)" stopOpacity={0} />
+                    <stop offset="0%" stopColor={CHART.yellow} stopOpacity={0.5} />
+                    <stop offset="100%" stopColor={CHART.yellow} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.26 0.018 285)" />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
                 <XAxis dataKey="period" tickFormatter={monthLabel} tick={{ fontSize: 11 }} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} labelFormatter={monthLabel} />
@@ -188,14 +198,14 @@ export default function DashboardPage() {
                   type="monotone"
                   dataKey="created"
                   name="Criados"
-                  stroke="oklch(0.62 0.21 289)"
+                  stroke={CHART.gray}
                   fill="url(#gCreated)"
                 />
                 <Area
                   type="monotone"
                   dataKey="converted"
                   name="Convertidos"
-                  stroke="oklch(0.72 0.17 162)"
+                  stroke={CHART.yellow}
                   fill="url(#gConverted)"
                 />
               </AreaChart>
@@ -210,7 +220,7 @@ export default function DashboardPage() {
           <CardContent className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={activityDays.data ?? []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.26 0.018 285)" />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
                 <XAxis
                   dataKey="day"
                   tick={{ fontSize: 10 }}
@@ -219,14 +229,14 @@ export default function DashboardPage() {
                 <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} />
                 <Legend />
-                <Bar dataKey="call" name="Ligações" stackId="a" fill="oklch(0.62 0.21 289)" />
-                <Bar dataKey="email" name="Emails" stackId="a" fill="oklch(0.7 0.15 230)" />
-                <Bar dataKey="meeting" name="Reuniões" stackId="a" fill="oklch(0.8 0.16 84)" />
+                <Bar dataKey="call" name="Ligações" stackId="a" fill={CHART.yellow} />
+                <Bar dataKey="email" name="Emails" stackId="a" fill={CHART.gray} />
+                <Bar dataKey="meeting" name="Reuniões" stackId="a" fill={CHART.amber} />
                 <Bar
                   dataKey="task"
                   name="Tarefas"
                   stackId="a"
-                  fill="oklch(0.72 0.17 162)"
+                  fill={CHART.grayDark}
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
@@ -243,11 +253,11 @@ export default function DashboardPage() {
               <AreaChart data={forecast.data ?? []}>
                 <defs>
                   <linearGradient id="gWeighted" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="oklch(0.8 0.16 84)" stopOpacity={0.5} />
-                    <stop offset="100%" stopColor="oklch(0.8 0.16 84)" stopOpacity={0} />
+                    <stop offset="0%" stopColor={CHART.yellow} stopOpacity={0.5} />
+                    <stop offset="100%" stopColor={CHART.yellow} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.26 0.018 285)" />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
                 <XAxis dataKey="period" tickFormatter={monthLabel} tick={{ fontSize: 11 }} />
                 <YAxis
                   tick={{ fontSize: 11 }}
@@ -263,7 +273,7 @@ export default function DashboardPage() {
                   type="monotone"
                   dataKey="total"
                   name="Total no funil"
-                  stroke="oklch(0.66 0.015 285)"
+                  stroke={CHART.gray}
                   fill="transparent"
                   strokeDasharray="4 4"
                 />
@@ -271,7 +281,7 @@ export default function DashboardPage() {
                   type="monotone"
                   dataKey="weighted"
                   name="Ponderado (probabilidade)"
-                  stroke="oklch(0.8 0.16 84)"
+                  stroke={CHART.yellow}
                   fill="url(#gWeighted)"
                 />
               </AreaChart>

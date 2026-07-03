@@ -38,10 +38,10 @@ ADMIN_EMAIL = "admin@gruposb.com"
 ADMIN_PASSWORD = "admin123"
 
 STAGES = [
-    ("Prospecção", 10, "#818cf8", False, False),
-    ("Qualificação", 25, "#38bdf8", False, False),
-    ("Proposta", 50, "#fbbf24", False, False),
-    ("Negociação", 75, "#fb923c", False, False),
+    ("Prospecção", 10, "#a1a1aa", False, False),
+    ("Qualificação", 25, "#fde047", False, False),
+    ("Proposta", 50, "#facc15", False, False),
+    ("Negociação", 75, "#f59e0b", False, False),
     ("Fechado — Ganhou", 100, "#34d399", True, False),
     ("Fechado — Perdeu", 0, "#f87171", False, True),
 ]

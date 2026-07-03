@@ -13,7 +13,7 @@ class PipelineStage(TableBase):
 
     name: Mapped[str] = mapped_column(String(120))
     position: Mapped[int] = mapped_column(Integer, default=0)
-    color: Mapped[str] = mapped_column(String(20), default="#6366f1")
+    color: Mapped[str] = mapped_column(String(20), default="#facc15")
     # Probabilidade default aplicada às oportunidades que entram no estágio.
     probability: Mapped[int] = mapped_column(Integer, default=10)
     is_won: Mapped[bool] = mapped_column(Boolean, default=False)
