@@ -12,6 +12,9 @@ class AccountCreate(BaseModel):
     domain: str = ""
     industry: str = ""
     size: AccountSize = AccountSize.S
+    cnpj: str = ""
+    city: str = ""
+    state: str = ""
     custom_fields: dict[str, Any] = {}
 
 
@@ -20,6 +23,9 @@ class AccountUpdate(BaseModel):
     domain: str | None = None
     industry: str | None = None
     size: AccountSize | None = None
+    cnpj: str | None = None
+    city: str | None = None
+    state: str | None = None
     custom_fields: dict[str, Any] | None = None
 
 
@@ -31,6 +37,9 @@ class AccountOut(BaseModel):
     domain: str
     industry: str
     size: AccountSize
+    cnpj: str
+    city: str
+    state: str
     custom_fields: dict[str, Any]
     created_at: datetime
     updated_at: datetime

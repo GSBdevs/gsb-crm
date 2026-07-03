@@ -23,6 +23,9 @@ class Account(TableBase):
     size: Mapped[AccountSize] = mapped_column(
         Enum(AccountSize, native_enum=False, length=4), default=AccountSize.S
     )
+    cnpj: Mapped[str] = mapped_column(String(20), default="")
+    city: Mapped[str] = mapped_column(String(120), default="")
+    state: Mapped[str] = mapped_column(String(2), default="")
     custom_fields: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
     contacts = relationship("Contact", back_populates="account")

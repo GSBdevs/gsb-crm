@@ -3,6 +3,8 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.models.pipeline import BillingType, ServiceType
+
 
 class StageCreate(BaseModel):
     name: str
@@ -46,6 +48,9 @@ class OpportunityCreate(BaseModel):
     stage_id: uuid.UUID
     contact_id: uuid.UUID | None = None
     account_id: uuid.UUID | None = None
+    service_type: ServiceType = ServiceType.PRINTER_RENTAL
+    billing_type: BillingType = BillingType.MONTHLY
+    contract_months: int = Field(default=12, ge=1, le=120)
 
 
 class OpportunityUpdate(BaseModel):
@@ -55,6 +60,9 @@ class OpportunityUpdate(BaseModel):
     expected_close: date | None = None
     contact_id: uuid.UUID | None = None
     account_id: uuid.UUID | None = None
+    service_type: ServiceType | None = None
+    billing_type: BillingType | None = None
+    contract_months: int | None = Field(default=None, ge=1, le=120)
 
 
 class OpportunityMoveIn(BaseModel):
@@ -75,6 +83,10 @@ class OpportunityOut(BaseModel):
     stage_id: uuid.UUID
     contact_id: uuid.UUID | None
     account_id: uuid.UUID | None
+    service_type: ServiceType
+    billing_type: BillingType
+    contract_months: int
+    total_value: float
     created_at: datetime
     updated_at: datetime
 

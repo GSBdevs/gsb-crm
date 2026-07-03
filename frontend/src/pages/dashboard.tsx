@@ -10,7 +10,15 @@ import type {
   TimeSeriesPoint,
 } from "@/types";
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, CalendarClock, DollarSign, KanbanSquare, UserPlus } from "lucide-react";
+import {
+  AlertTriangle,
+  CalendarClock,
+  DollarSign,
+  KanbanSquare,
+  Printer,
+  Repeat,
+  UserPlus,
+} from "lucide-react";
 import {
   Area,
   AreaChart,
@@ -109,18 +117,24 @@ export default function DashboardPage() {
       </div>
 
       {!s ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-24" />
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <KpiCard
-            title="Pipeline aberto"
+            title="Pipeline aberto (valor mensal)"
             value={formatBRL(s.open_value)}
             hint={`${s.open_opportunities} negócio(s) em andamento`}
             icon={KanbanSquare}
+          />
+          <KpiCard
+            title="MRR em pipeline"
+            value={formatBRL(s.mrr_open)}
+            hint="receita recorrente mensal em negociação"
+            icon={Repeat}
           />
           <KpiCard
             title="Ganho no mês"
@@ -133,6 +147,13 @@ export default function DashboardPage() {
             value={String(s.open_leads + s.qualified_leads)}
             hint={`${s.qualified_leads} qualificado(s)`}
             icon={UserPlus}
+          />
+          <KpiCard
+            title="Renovações em 90 dias"
+            value={String(s.renewals_next_90d)}
+            hint="contratos concorrentes vencendo — janela de ataque"
+            icon={Printer}
+            tone={s.renewals_next_90d > 0 ? "text-warning" : "text-primary"}
           />
           <KpiCard
             title="Atividades hoje"

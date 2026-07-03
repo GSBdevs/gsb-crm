@@ -61,6 +61,11 @@ async def test_lead_conversion_creates_contact_account_opportunity(
     assert data["opportunity"]["value"] == 50000
     # entra no primeiro estágio aberto do pipeline
     assert data["opportunity"]["stage_id"] == stages[0]["id"]
+    # interesse do lead (default printer_rental) define a linha de serviço da oportunidade
+    assert data["opportunity"]["service_type"] == "printer_rental"
+    assert data["opportunity"]["billing_type"] == "monthly"
+    assert data["opportunity"]["contract_months"] == 12
+    assert data["opportunity"]["total_value"] == 50000 * 12
 
     # conta criada a partir da empresa do lead
     resp = await client.get("/accounts", params={"q": "Constrói"}, headers=auth_headers)

@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Activity, Contact, Lead, LeadStatus, Opportunity, PipelineStage
+from app.models.pipeline import BillingType
 
 
 def _month_key(d: datetime | date) -> str:
@@ -80,11 +81,36 @@ async def summary(db: AsyncSession) -> dict:
 
     contacts_total = await db.scalar(select(func.count()).select_from(Contact))
 
+    # MRR em pipeline: soma dos valores mensais dos negócios recorrentes abertos
+    mrr_open = await db.scalar(
+        select(func.coalesce(func.sum(Opportunity.value), 0))
+        .join(PipelineStage, Opportunity.stage_id == PipelineStage.id)
+        .where(
+            PipelineStage.is_won.is_(False),
+            PipelineStage.is_lost.is_(False),
+            Opportunity.billing_type == BillingType.MONTHLY,
+        )
+    )
+
+    # Contratos concorrentes vencendo em até 90 dias — janela quente de prospecção
+    renewals_next_90d = await db.scalar(
+        select(func.count())
+        .select_from(Lead)
+        .where(
+            Lead.status.in_([LeadStatus.NEW, LeadStatus.QUALIFIED]),
+            Lead.contract_renewal.is_not(None),
+            Lead.contract_renewal >= today,
+            Lead.contract_renewal <= today + timedelta(days=90),
+        )
+    )
+
     return {
         "open_leads": open_leads or 0,
         "qualified_leads": qualified or 0,
         "open_opportunities": open_opps[0] or 0,
         "open_value": float(open_opps[1] or 0),
+        "mrr_open": float(mrr_open or 0),
+        "renewals_next_90d": renewals_next_90d or 0,
         "won_value_month": won_month,
         "activities_due_today": due_today,
         "activities_overdue": overdue,

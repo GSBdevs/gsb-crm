@@ -37,9 +37,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { useDebounce } from "@/hooks/use-debounce";
 import { api, ApiError } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import type { Contact, Lead, LeadStatus, Opportunity, Page } from "@/types";
+import type { Contact, Lead, LeadInterest, LeadStatus, Opportunity, Page } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRightLeft, MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import {
+  ArrowRightLeft,
+  CalendarClock,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -50,14 +58,33 @@ const STATUS_LABEL: Record<LeadStatus, { label: string; variant: "default" | "se
   lost: { label: "Perdido", variant: "destructive" },
 };
 
+const INTEREST_LABEL: Record<LeadInterest, string> = {
+  printer_rental: "Locação de impressoras",
+  it_outsourcing: "Outsourcing de TI",
+  both: "Locação + TI",
+};
+
+function renewalInfo(iso: string | null): { label: string; soon: boolean } | null {
+  if (!iso) return null;
+  const days = Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000);
+  return { label: formatDate(iso), soon: days >= 0 && days <= 90 };
+}
+
 interface LeadForm {
   name: string;
   email: string;
   phone: string;
   company: string;
+  cnpj: string;
   source: string;
   score: number;
   notes: string;
+  interest: LeadInterest;
+  current_provider: string;
+  contract_renewal: string;
+  printer_count: number;
+  monthly_volume_mono: number;
+  monthly_volume_color: number;
   status?: LeadStatus;
 }
 
@@ -66,9 +93,16 @@ const EMPTY_FORM: LeadForm = {
   email: "",
   phone: "",
   company: "",
+  cnpj: "",
   source: "",
   score: 0,
   notes: "",
+  interest: "printer_rental",
+  current_provider: "",
+  contract_renewal: "",
+  printer_count: 0,
+  monthly_volume_mono: 0,
+  monthly_volume_color: 0,
 };
 
 export default function LeadsPage() {
@@ -104,10 +138,12 @@ export default function LeadsPage() {
   };
 
   const saveMutation = useMutation({
-    mutationFn: (payload: LeadForm) =>
-      editing
-        ? api<Lead>(`/leads/${editing.id}`, { method: "PATCH", json: payload })
-        : api<Lead>("/leads", { method: "POST", json: payload }),
+    mutationFn: (payload: LeadForm) => {
+      const json = { ...payload, contract_renewal: payload.contract_renewal || null };
+      return editing
+        ? api<Lead>(`/leads/${editing.id}`, { method: "PATCH", json })
+        : api<Lead>("/leads", { method: "POST", json });
+    },
     onSuccess: () => {
       toast.success(editing ? "Lead atualizado" : "Lead criado");
       setFormOpen(false);
@@ -139,9 +175,16 @@ export default function LeadsPage() {
       email: lead.email,
       phone: lead.phone,
       company: lead.company,
+      cnpj: lead.cnpj,
       source: lead.source,
       score: lead.score,
       notes: lead.notes,
+      interest: lead.interest,
+      current_provider: lead.current_provider,
+      contract_renewal: lead.contract_renewal ?? "",
+      printer_count: lead.printer_count,
+      monthly_volume_mono: lead.monthly_volume_mono,
+      monthly_volume_color: lead.monthly_volume_color,
       status: lead.status,
     });
     setFormOpen(true);
@@ -202,10 +245,10 @@ export default function LeadsPage() {
             <TableRow>
               <TableHead>Nome</TableHead>
               <TableHead className="hidden md:table-cell">Empresa</TableHead>
-              <TableHead className="hidden lg:table-cell">Origem</TableHead>
-              <TableHead>Score</TableHead>
+              <TableHead>Interesse</TableHead>
+              <TableHead className="hidden lg:table-cell">Renovação</TableHead>
+              <TableHead className="hidden md:table-cell">Score</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="hidden md:table-cell">Criado</TableHead>
               <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
@@ -227,17 +270,41 @@ export default function LeadsPage() {
             )}
             {(data?.items ?? []).map((lead) => {
               const status = STATUS_LABEL[lead.status];
+              const renewal = renewalInfo(lead.contract_renewal);
               return (
                 <TableRow key={lead.id}>
                   <TableCell>
                     <p className="font-medium">{lead.name}</p>
                     <p className="text-xs text-muted-foreground">{lead.email || "—"}</p>
                   </TableCell>
-                  <TableCell className="hidden md:table-cell">{lead.company || "—"}</TableCell>
-                  <TableCell className="hidden capitalize lg:table-cell">
-                    {lead.source || "—"}
+                  <TableCell className="hidden md:table-cell">
+                    <p>{lead.company || "—"}</p>
+                    {lead.printer_count > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {lead.printer_count} impressora(s)
+                      </p>
+                    )}
                   </TableCell>
                   <TableCell>
+                    <Badge variant="secondary">{INTEREST_LABEL[lead.interest]}</Badge>
+                  </TableCell>
+                  <TableCell className="hidden lg:table-cell">
+                    {renewal ? (
+                      <span
+                        className={
+                          renewal.soon
+                            ? "flex items-center gap-1 font-medium text-warning"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {renewal.soon && <CalendarClock className="size-3.5" />}
+                        {renewal.label}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <div className="flex items-center gap-2">
                       <div className="h-1.5 w-14 overflow-hidden rounded-full bg-muted">
                         <div
@@ -252,9 +319,6 @@ export default function LeadsPage() {
                   </TableCell>
                   <TableCell>
                     <Badge variant={status.variant}>{status.label}</Badge>
-                  </TableCell>
-                  <TableCell className="hidden text-muted-foreground md:table-cell">
-                    {formatDate(lead.created_at)}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -361,6 +425,14 @@ export default function LeadsPage() {
                 />
               </div>
               <div className="space-y-1.5">
+                <Label>CNPJ</Label>
+                <Input
+                  placeholder="00.000.000/0000-00"
+                  value={form.cnpj}
+                  onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
                 <Label>Origem</Label>
                 <Input
                   placeholder="site, indicação, evento…"
@@ -376,6 +448,75 @@ export default function LeadsPage() {
                   max={100}
                   value={form.score}
                   onChange={(e) => setForm({ ...form, score: Number(e.target.value) })}
+                />
+              </div>
+
+              <div className="sm:col-span-2 mt-1 border-t border-border pt-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Qualificação — impressão & TI
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Interesse</Label>
+                <Select
+                  value={form.interest}
+                  onValueChange={(v) => setForm({ ...form, interest: v as LeadInterest })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="printer_rental">Locação de impressoras</SelectItem>
+                    <SelectItem value="it_outsourcing">Outsourcing de TI</SelectItem>
+                    <SelectItem value="both">Locação + TI</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Fornecedor atual</Label>
+                <Input
+                  placeholder="quem atende hoje"
+                  value={form.current_provider}
+                  onChange={(e) => setForm({ ...form, current_provider: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Renovação do contrato atual</Label>
+                <Input
+                  type="date"
+                  value={form.contract_renewal}
+                  onChange={(e) => setForm({ ...form, contract_renewal: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nº de impressoras</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={form.printer_count}
+                  onChange={(e) => setForm({ ...form, printer_count: Number(e.target.value) })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Volume mensal P&B (págs)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={form.monthly_volume_mono}
+                  onChange={(e) =>
+                    setForm({ ...form, monthly_volume_mono: Number(e.target.value) })
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Volume mensal color (págs)</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={form.monthly_volume_color}
+                  onChange={(e) =>
+                    setForm({ ...form, monthly_volume_color: Number(e.target.value) })
+                  }
                 />
               </div>
               {editing && (
@@ -466,6 +607,7 @@ function ConvertDialog({
   const [title, setTitle] = useState("");
   const [value, setValue] = useState("");
   const [accountName, setAccountName] = useState("");
+  const [contractMonths, setContractMonths] = useState("36");
 
   const convertMutation = useMutation({
     mutationFn: () =>
@@ -478,6 +620,7 @@ function ConvertDialog({
             opportunity_title: title || null,
             value: value ? Number(value) : null,
             account_name: accountName || null,
+            contract_months: Number(contractMonths) || 12,
           },
         },
       ),
@@ -525,7 +668,7 @@ function ConvertDialog({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Valor (R$)</Label>
+                <Label>Valor mensal (R$)</Label>
                 <Input
                   type="number"
                   min={0}
@@ -535,6 +678,16 @@ function ConvertDialog({
                 />
               </div>
               <div className="space-y-1.5">
+                <Label>Prazo (meses)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={120}
+                  value={contractMonths}
+                  onChange={(e) => setContractMonths(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
                 <Label>Conta (empresa)</Label>
                 <Input
                   placeholder={lead?.company || "opcional"}

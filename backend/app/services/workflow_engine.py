@@ -29,14 +29,37 @@ from app.models import (
 logger = logging.getLogger(__name__)
 
 # Eventos disponíveis e campos expostos ao builder de condições do frontend.
+_LEAD_FIELDS = [
+    "name",
+    "email",
+    "company",
+    "source",
+    "score",
+    "status",
+    "interest",
+    "current_provider",
+    "printer_count",
+    "monthly_volume_mono",
+    "monthly_volume_color",
+]
+_OPP_FIELDS = [
+    "title",
+    "value",
+    "total_value",
+    "probability",
+    "stage",
+    "service_type",
+    "billing_type",
+    "contract_months",
+]
 TRIGGERS: dict[str, list[str]] = {
-    "lead.created": ["name", "email", "company", "source", "score", "status"],
-    "lead.status_changed": ["name", "email", "source", "score", "old_status", "new_status"],
-    "lead.converted": ["name", "email", "company", "source", "score"],
-    "opportunity.created": ["title", "value", "probability", "stage"],
-    "opportunity.stage_changed": ["title", "value", "probability", "old_stage", "new_stage"],
-    "opportunity.won": ["title", "value", "stage"],
-    "opportunity.lost": ["title", "value", "stage"],
+    "lead.created": _LEAD_FIELDS,
+    "lead.status_changed": [*_LEAD_FIELDS, "old_status", "new_status"],
+    "lead.converted": _LEAD_FIELDS,
+    "opportunity.created": _OPP_FIELDS,
+    "opportunity.stage_changed": [*_OPP_FIELDS, "old_stage", "new_stage"],
+    "opportunity.won": _OPP_FIELDS,
+    "opportunity.lost": _OPP_FIELDS,
 }
 
 ACTION_TYPES: dict[str, dict[str, str]] = {

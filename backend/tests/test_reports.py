@@ -24,6 +24,8 @@ async def test_reports_reflect_data(client: AsyncClient, auth_headers):
     assert summary["open_leads"] == 1
     assert summary["open_opportunities"] == 1
     assert summary["open_value"] == 10000.0
+    assert summary["mrr_open"] == 10000.0  # billing default é mensal
+    assert summary["renewals_next_90d"] == 0
     assert summary["contacts_total"] == 1
 
     resp = await client.get("/reports/pipeline-by-stage", headers=auth_headers)

@@ -40,9 +40,20 @@ interface AccountForm {
   domain: string;
   industry: string;
   size: AccountSize;
+  cnpj: string;
+  city: string;
+  state: string;
 }
 
-const EMPTY: AccountForm = { name: "", domain: "", industry: "", size: "S" };
+const EMPTY: AccountForm = {
+  name: "",
+  domain: "",
+  industry: "",
+  size: "S",
+  cnpj: "",
+  city: "",
+  state: "",
+};
 
 export default function AccountsPage() {
   const queryClient = useQueryClient();
@@ -180,6 +191,9 @@ export default function AccountsPage() {
                           domain: account.domain,
                           industry: account.industry,
                           size: account.size,
+                          cnpj: account.cnpj,
+                          city: account.city,
+                          state: account.state,
                         });
                         setFormOpen(true);
                       }}
@@ -273,6 +287,30 @@ export default function AccountsPage() {
                     <SelectItem value="XL">XL — enterprise</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>CNPJ</Label>
+                <Input
+                  placeholder="00.000.000/0000-00"
+                  value={form.cnpj}
+                  onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Cidade</Label>
+                <Input
+                  value={form.city}
+                  onChange={(e) => setForm({ ...form, city: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>UF</Label>
+                <Input
+                  maxLength={2}
+                  placeholder="SP"
+                  value={form.state}
+                  onChange={(e) => setForm({ ...form, state: e.target.value.toUpperCase() })}
+                />
               </div>
             </div>
             <DialogFooter>

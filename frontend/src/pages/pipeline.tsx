@@ -20,12 +20,18 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { api, ApiError } from "@/lib/api";
 import { cn, formatBRL } from "@/lib/utils";
-import type { Contact, Opportunity, Page, Stage } from "@/types";
+import type { BillingType, Contact, Opportunity, Page, ServiceType, Stage } from "@/types";
 import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, CircleUser, Plus, Trash2 } from "lucide-react";
+import { Building2, CircleUser, Plus, Printer, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+
+const SERVICE_LABEL: Record<ServiceType, string> = {
+  printer_rental: "Locação de impressoras",
+  it_outsourcing: "Outsourcing de TI",
+  mixed: "Locação + TI",
+};
 
 export default function PipelinePage() {
   const queryClient = useQueryClient();
@@ -201,10 +207,24 @@ export default function PipelinePage() {
                                 <div className="mt-2 flex items-center justify-between">
                                   <span className="text-sm font-bold text-primary">
                                     {formatBRL(opp.value)}
+                                    {opp.billing_type === "monthly" && (
+                                      <span className="font-normal text-muted-foreground">
+                                        /mês · {opp.contract_months}m
+                                      </span>
+                                    )}
                                   </span>
                                   <Badge variant="outline" className="text-[10px]">
                                     {opp.probability}%
                                   </Badge>
+                                </div>
+                                <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                                  <Printer className="size-3" />
+                                  {SERVICE_LABEL[opp.service_type]}
+                                  {opp.billing_type === "monthly" && (
+                                    <span className="ml-auto">
+                                      total {formatBRL(opp.total_value)}
+                                    </span>
+                                  )}
                                 </div>
                                 {(opp.contact_name || opp.account_name) && (
                                   <div className="mt-2 space-y-1 text-xs text-muted-foreground">
@@ -272,6 +292,9 @@ function AddOpportunityDialog({ stage, onClose }: { stage: Stage | null; onClose
   const [value, setValue] = useState("");
   const [contactId, setContactId] = useState<string>("none");
   const [expectedClose, setExpectedClose] = useState("");
+  const [serviceType, setServiceType] = useState<ServiceType>("printer_rental");
+  const [billingType, setBillingType] = useState<BillingType>("monthly");
+  const [contractMonths, setContractMonths] = useState("36");
 
   const contacts = useQuery({
     queryKey: ["contacts", "picker"],
@@ -289,6 +312,9 @@ function AddOpportunityDialog({ stage, onClose }: { stage: Stage | null; onClose
           stage_id: stage!.id,
           contact_id: contactId === "none" ? null : contactId,
           expected_close: expectedClose || null,
+          service_type: serviceType,
+          billing_type: billingType,
+          contract_months: Number(contractMonths) || 12,
         },
       }),
     onSuccess: () => {
@@ -341,6 +367,44 @@ function AddOpportunityDialog({ stage, onClose }: { stage: Stage | null; onClose
                 type="date"
                 value={expectedClose}
                 onChange={(e) => setExpectedClose(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-1.5">
+              <Label>Serviço</Label>
+              <Select value={serviceType} onValueChange={(v) => setServiceType(v as ServiceType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="printer_rental">Locação de impressoras</SelectItem>
+                  <SelectItem value="it_outsourcing">Outsourcing de TI</SelectItem>
+                  <SelectItem value="mixed">Locação + TI</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Cobrança</Label>
+              <Select value={billingType} onValueChange={(v) => setBillingType(v as BillingType)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Mensal (recorrente)</SelectItem>
+                  <SelectItem value="one_time">Valor único</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Prazo (meses)</Label>
+              <Input
+                type="number"
+                min={1}
+                max={120}
+                disabled={billingType === "one_time"}
+                value={contractMonths}
+                onChange={(e) => setContractMonths(e.target.value)}
               />
             </div>
           </div>

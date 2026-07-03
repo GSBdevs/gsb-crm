@@ -41,6 +41,12 @@ def lead_payload(lead: Lead, **extra: Any) -> dict[str, Any]:
         "source": lead.source,
         "score": lead.score,
         "status": str(lead.status),
+        "interest": str(lead.interest),
+        "current_provider": lead.current_provider,
+        "contract_renewal": lead.contract_renewal.isoformat() if lead.contract_renewal else "",
+        "printer_count": lead.printer_count,
+        "monthly_volume_mono": lead.monthly_volume_mono,
+        "monthly_volume_color": lead.monthly_volume_color,
         **extra,
     }
 
@@ -49,7 +55,11 @@ def opportunity_payload(opp: Opportunity, stage_name: str = "", **extra: Any) ->
     return {
         "title": opp.title,
         "value": float(opp.value or 0),
+        "total_value": opp.total_value,
         "probability": opp.probability,
         "stage": stage_name,
+        "service_type": str(opp.service_type),
+        "billing_type": str(opp.billing_type),
+        "contract_months": opp.contract_months,
         **extra,
     }

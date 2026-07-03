@@ -6,6 +6,8 @@ class SummaryOut(BaseModel):
     qualified_leads: int
     open_opportunities: int
     open_value: float
+    mrr_open: float
+    renewals_next_90d: int
     won_value_month: float
     activities_due_today: int
     activities_overdue: int

@@ -5,6 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Account, Contact, Lead, LeadStatus, Opportunity, PipelineStage, utcnow
+from app.models.lead import LeadInterest
+from app.models.pipeline import ServiceType
 from app.schemas.lead import LeadConvertIn
 from app.services import events
 
@@ -64,6 +66,12 @@ async def convert_lead(
                 status.HTTP_409_CONFLICT,
                 "Nenhum estágio de pipeline cadastrado — crie os estágios antes de converter",
             )
+        # O interesse do lead define a linha de serviço da oportunidade.
+        service_type = {
+            LeadInterest.PRINTER_RENTAL: ServiceType.PRINTER_RENTAL,
+            LeadInterest.IT_OUTSOURCING: ServiceType.IT_OUTSOURCING,
+            LeadInterest.BOTH: ServiceType.MIXED,
+        }[lead.interest]
         opportunity = Opportunity(
             title=data.opportunity_title or f"Oportunidade — {lead.name}",
             value=data.value or 0,
@@ -71,6 +79,8 @@ async def convert_lead(
             stage_id=stage.id,
             contact_id=contact.id,
             account_id=account.id if account else None,
+            service_type=service_type,
+            contract_months=data.contract_months,
         )
         db.add(opportunity)
         await db.flush()

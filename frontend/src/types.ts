@@ -24,6 +24,7 @@ export interface Page<T> {
 }
 
 export type LeadStatus = "new" | "qualified" | "converted" | "lost";
+export type LeadInterest = "printer_rental" | "it_outsourcing" | "both";
 
 export interface Lead {
   id: string;
@@ -31,10 +32,17 @@ export interface Lead {
   email: string;
   phone: string;
   company: string;
+  cnpj: string;
   source: string;
   status: LeadStatus;
   score: number;
   notes: string;
+  interest: LeadInterest;
+  current_provider: string;
+  contract_renewal: string | null;
+  printer_count: number;
+  monthly_volume_mono: number;
+  monthly_volume_color: number;
   converted_at: string | null;
   converted_contact_id: string | null;
   converted_opportunity_id: string | null;
@@ -50,6 +58,9 @@ export interface Account {
   domain: string;
   industry: string;
   size: AccountSize;
+  cnpj: string;
+  city: string;
+  state: string;
   custom_fields: Record<string, unknown>;
   created_at: string;
   updated_at: string;
@@ -80,6 +91,9 @@ export interface Stage {
   is_lost: boolean;
 }
 
+export type ServiceType = "printer_rental" | "it_outsourcing" | "mixed";
+export type BillingType = "monthly" | "one_time";
+
 export interface Opportunity {
   id: string;
   title: string;
@@ -91,6 +105,10 @@ export interface Opportunity {
   stage_id: string;
   contact_id: string | null;
   account_id: string | null;
+  service_type: ServiceType;
+  billing_type: BillingType;
+  contract_months: number;
+  total_value: number;
   created_at: string;
   updated_at: string;
   contact_name?: string | null;
@@ -167,6 +185,8 @@ export interface Summary {
   qualified_leads: number;
   open_opportunities: number;
   open_value: number;
+  mrr_open: number;
+  renewals_next_90d: number;
   won_value_month: number;
   activities_due_today: number;
   activities_overdue: number;
