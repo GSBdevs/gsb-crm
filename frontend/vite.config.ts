@@ -13,6 +13,18 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Separa dependências pesadas do bundle principal (cache + first load)
+        manualChunks: {
+          react: ["react", "react-dom", "react-router"],
+          charts: ["recharts"],
+          dnd: ["@hello-pangea/dnd"],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {

@@ -1,4 +1,4 @@
-import { api, clearTokens, getAccessToken, setTokens } from "@/lib/api";
+import { api, clearTokens, getAccessToken, getRefreshToken, setTokens } from "@/lib/api";
 import type { TokenPair, User } from "@/types";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
@@ -39,6 +39,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
+    // Revoga o refresh token no servidor (best-effort) antes de limpar a sessão.
+    const refreshToken = getRefreshToken();
+    if (refreshToken) {
+      void api("/auth/logout", { method: "POST", json: { refresh_token: refreshToken } }).catch(
+        () => undefined,
+      );
+    }
     clearTokens();
     setHasToken(false);
     queryClient.clear();
