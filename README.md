@@ -1,56 +1,75 @@
 # GrupoSB CRM
 
-CRM próprio do Grupo SB, implementado a partir do documento *"CRM Próprio — Documento de Decisão Técnica"* (jun/2026).
+CRM próprio do Grupo SB para **locação de impressoras (A4/A3, mono/color) e outsourcing de TI**, implementado a partir do documento *"CRM Próprio — Documento de Decisão Técnica"* (jun/2026).
 
 **Stack:** FastAPI + SQLAlchemy async (Python) · React 19 + TypeScript + Vite + Tailwind 4 (frontend) · PostgreSQL 16 · Redis + Celery (workflows) · Docker Compose.
 
-## O que ter instalado
+**Repositório:** https://github.com/GSBdevs/gsb-crm
 
-| Ferramenta | Versão mínima | Para quê | Status |
-|---|---|---|---|
-| Python | 3.12+ (testado no 3.14) | backend | obrigatório |
-| Node.js + npm | 20+ (testado no 24) | frontend | obrigatório |
-| Git | qualquer recente | versionamento | obrigatório |
-| Docker Desktop | atual | Postgres + Redis + worker Celery | **recomendado** — sem ele o dev roda em SQLite com workflows inline |
-| VS Code | — | extensões recomendadas em `.vscode/extensions.json` (Python, Ruff, ESLint, Prettier, Tailwind, Docker) | opcional |
+## Instalação — o que ter na máquina
 
-## Rodando em dev — sem Docker (modo atual)
+| Ferramenta | Versão mínima | Para quê |
+|---|---|---|
+| Python | 3.12+ (testado no 3.14) | backend |
+| Node.js + npm | 20+ (testado no 24) | frontend |
+| Git | recente | versionamento |
+| Docker Desktop | atual | Postgres + Redis (containers `db` e `redis`) |
+| VS Code | — | extensões recomendadas em `.vscode/extensions.json` |
 
-Sem `.env`, o backend usa **SQLite local** (`backend/crm_dev.db`) e executa workflows **no próprio processo** (`WORKFLOWS_INLINE=true`). Zero infraestrutura.
+> A máquina de dev tem PostgreSQL nativo na porta 5432; por isso o Postgres do compose é exposto em **5433**.
+
+## Uso — dev local (modo atual: Postgres + Redis + fila Celery)
 
 ```powershell
-# Backend
+# 1. Infra (uma vez por sessão)
+docker compose up -d db redis
+
+# 2. Backend — primeira vez
 cd backend
 python -m venv .venv
 .venv\Scripts\activate
 pip install -e ".[dev]"
-python scripts/seed.py        # cria admin@gruposb.com / admin123 + dados demo
-uvicorn app.main:app --reload # http://localhost:8000 (docs: /api/v1/docs)
+copy .env.example .env   # ajuste DATABASE_URL p/ localhost:5433 e WORKFLOWS_INLINE=false
+python -m alembic upgrade head
+python scripts/seed.py   # admin@gruposb.com / admin123 + dados demo do setor
 
-# Frontend (outro terminal)
+# 3. API (Windows: use run.py — garante o event loop compatível com psycopg)
+python run.py            # http://localhost:8000 (docs: /api/v1/docs)
+
+# 4. Worker Celery (outro terminal; --pool=solo é necessário no Windows)
+.venv\Scripts\python -m celery -A app.workers.celery_app.celery worker --loglevel=INFO --pool=solo
+
+# 5. Frontend (outro terminal)
 cd frontend
 npm install
-npm run dev                   # http://localhost:5173 (proxy /api -> 8000)
+npm run dev              # http://localhost:5173
 ```
 
-## Rodando com Docker (Postgres + Redis + Celery)
+**Modo mínimo sem Docker:** apague `backend/.env` — o backend cai para SQLite local com workflows inline (sem Redis/worker). Nesse modo `uvicorn app.main:app --reload` funciona normalmente.
 
-```powershell
-docker compose up --build
-# api:      http://localhost:8000
-# frontend: http://localhost:5173
-# Seed no Postgres:
-docker compose exec api python scripts/seed.py
-```
-
-O compose usa Postgres 16, Redis 7, aplica migrações Alembic no boot da API e sobe o worker Celery (`WORKFLOWS_INLINE=false` → ações de workflow vão para a fila).
+**Tudo em containers:** `docker compose up --build` (api + worker + frontend + db + redis) e `docker compose exec api python scripts/seed.py`.
 
 ## Testes
 
 ```powershell
 cd backend
-.venv\Scripts\python -m pytest    # 12 testes: auth, leads+conversão, kanban, workflows, relatórios
+.venv\Scripts\python -m pytest        # 13 testes: auth (rotação/revogação), leads+conversão,
+                                      # kanban, workflows, notificações por usuário, relatórios
+cd ..\frontend
+npm run build                         # type-check (tsc -b) + build Vite
 ```
+
+Teste manual da fila: com API + worker rodando, crie um lead na UI — o workflow "Novo lead → tarefa de follow-up" deve gerar atividade e notificação via Redis/Celery (veja o log do worker). Leads com `printer_count >= 10` também disparam "Lead prioritário".
+
+## Domínio: locação de impressoras & outsourcing de TI
+
+Campos de qualificação baseados em como o setor (MPS/outsourcing de impressão) prospecta:
+
+- **Lead**: interesse (`printer_rental` | `it_outsourcing` | `both`), fornecedor atual, **data de renovação do contrato concorrente** (principal gatilho de timing), nº de impressoras, volume mensal P&B/color, CNPJ.
+- **Opportunity**: tipo de serviço, cobrança (`monthly` = recorrente/MRR ou `one_time`), prazo em meses; `value` é o **valor mensal** quando recorrente e `total_value` = mensal × prazo.
+- **Account**: CNPJ, cidade, UF.
+- **Dashboard**: KPIs de MRR em pipeline e renovações concorrentes nos próximos 90 dias.
+- **Workflows**: condições podem usar os campos acima (ex.: `printer_count >= 10` → notificar).
 
 ## Estrutura
 
@@ -58,59 +77,50 @@ cd backend
 gruposb-crm/
   backend/
     app/
-      api/        # routers FastAPI (um arquivo por módulo)
-      core/       # config, banco, segurança (JWT/Argon2), paginação
-      models/     # SQLAlchemy (UUID PK + created_at/updated_at em tudo)
+      api/        # routers FastAPI (um por módulo)
+      core/       # config, banco, segurança (JWT/Argon2), aio (loop Windows), paginação
+      models/     # SQLAlchemy — UUID PK + auditoria em tudo
       schemas/    # Pydantic request/response
-      services/   # regra de negócio: conversão de lead, motor de workflows, relatórios
+      services/   # conversão de lead, motor de workflows, relatórios
       workers/    # Celery (fila Redis)
-    alembic/      # migrações (initial schema gerada)
+    alembic/      # migrações (3 revisões)
     scripts/seed.py
+    run.py        # entrypoint dev p/ Windows + Postgres
     tests/
   frontend/
     src/
-      components/ui/      # componentes estilo shadcn (tema escuro)
-      components/layout/  # shell: sidebar, topbar, notificações
-      pages/              # dashboard, leads, pipeline (kanban), contatos, contas, atividades, workflows
-      lib/api.ts          # fetch client com refresh automático de token
-      context/auth.tsx
-  docker-compose.yml
+      components/ui/       # componentes estilo shadcn (tema escuro preto/cinza/amarelo)
+      components/layout/   # shell, sidebar (com drawer mobile), notificações
+      pages/               # dashboard, leads, pipeline, contatos, contas, atividades, workflows
+      lib/api.ts           # fetch client com refresh automático
+  docker-compose.yml       # db(5433) + redis + api + worker + frontend
 ```
-
-## Módulos (conforme documento, seção 4)
-
-- **Leads** — CRUD + conversão (`POST /leads/{id}/convert` cria Contact + Account + Opportunity e dispara eventos).
-- **Contatos & Contas** — tags, score e `custom_fields` JSON.
-- **Pipeline** — estágios configuráveis (cor, probabilidade, flags ganho/perda); Kanban drag-and-drop; mover para estágio fechado seta `closed_at` e dispara `opportunity.won/lost`.
-- **Atividades** — polimórficas (lead/contato/oportunidade), tipos ligação/email/reunião/tarefa.
-- **Workflows** — trigger → condições (JSON) → ações (criar atividade, notificação in-app, email, webhook), com templates `{campo}`, log de execuções e builder visual.
-- **Relatórios** — resumo, pipeline por estágio, leads criados×convertidos, atividades por dia, forecast ponderado. Dashboard com Recharts.
 
 ## Como adicionar um novo módulo (receita)
 
-1. `backend/app/models/<modulo>.py` — modelo herdando `TableBase`; importe em `models/__init__.py`.
+1. `backend/app/models/<modulo>.py` herdado de `TableBase`; exporte em `models/__init__.py`.
 2. `backend/app/schemas/<modulo>.py` — `XCreate`, `XUpdate`, `XOut`.
-3. `backend/app/api/<modulo>.py` — router copiando o padrão de `accounts.py`; registre em `api/router.py`.
-4. `alembic revision --autogenerate -m "add <modulo>"` + `alembic upgrade head`.
+3. `backend/app/api/<modulo>.py` no padrão de `accounts.py`; registre em `api/router.py`.
+4. `python -m alembic revision --autogenerate -m "add <modulo>"` → revise `server_default` p/ colunas NOT NULL → `upgrade head`.
 5. Teste em `backend/tests/`.
-6. Frontend: tipo em `src/types.ts`, página em `src/pages/`, rota em `App.tsx`, item no `NAV` de `app-shell.tsx`.
-7. Precisa de automação? Adicione o evento em `TRIGGERS` (`services/workflow_engine.py`) e chame `events.dispatch(...)` no router — o builder de workflows passa a oferecê-lo automaticamente.
+6. Frontend: tipo em `src/types.ts`, página em `src/pages/`, rota em `App.tsx`, item no `NAV` do `app-shell.tsx`.
+7. Automação? Adicione o evento em `TRIGGERS` (`services/workflow_engine.py`) e chame `events.dispatch(...)` — o builder da UI o oferece automaticamente.
 
-## Decisões que divergem do documento (e por quê)
+## Decisões técnicas (divergências do documento original)
 
 | Documento | Implementado | Motivo |
 |---|---|---|
-| python-jose | **PyJWT** | python-jose está semi-abandonado e teve CVEs (2024); PyJWT é o padrão mantido |
-| (hash não especificado) | **pwdlib + Argon2id** | recomendação OWASP atual; passlib está sem manutenção |
-| React 18 | **React 19 + Tailwind 4 + Vite 6** | versões estáveis atuais, suportadas pelo ecossistema shadcn |
-| driver Postgres implícito (asyncpg) | **psycopg3** | funciona sync+async com um único pacote (Alembic + FastAPI), wheels melhores p/ Python 3.14 |
-| Poetry ou pip-tools | **pyproject.toml PEP 621 puro** | funciona com pip e uv, sem ferramenta extra |
-| Contact↔Account M:N (`account_contacts`) | **FK simples (`account_id`)** | o ERD da seção 6 usa FK; M:N pode ser adicionado depois sem quebrar a API |
-| Somente Postgres | **fallback SQLite p/ dev** | Docker não estava instalado na máquina; o projeto roda hoje e migra para Postgres sem mudança de código |
+| python-jose | PyJWT | python-jose semi-abandonado, CVEs em 2024 |
+| — | pwdlib + Argon2id | recomendação OWASP atual |
+| React 18 | React 19 + Tailwind 4 + Vite 6 | versões estáveis atuais |
+| asyncpg (implícito) | psycopg3 | sync+async num pacote; wheels p/ Python 3.14 |
+| Poetry/pip-tools | pyproject PEP 621 | funciona com pip e uv |
+| Contact↔Account M:N | FK `account_id` | segue o ERD; M:N pode vir depois |
+
+Notas do Windows: psycopg async exige SelectorEventLoop (ver `app/core/aio.py` e `run.py`); Celery precisa de `--pool=solo`.
 
 ## Pendências conhecidas
 
-- Refresh tokens não são revogáveis (sem blacklist/jti persistido) — aceitável para equipe pequena; revisar antes de expor à internet.
-- Leitura de notificação broadcast é global (não por usuário).
-- Bundle do frontend > 500 kB (Recharts); code-splitting com `manualChunks` quando incomodar.
-- Caminho Celery/Redis escrito e configurado, mas só exercitado com Docker instalado.
+- Hot-reload do uvicorn no Windows apenas no modo SQLite (o reloader perde o loop Selector).
+- Ação `send_email` usa SMTP simples (configure `SMTP_*` no `.env`); sem fila de retry própria.
+- Sem multi-tenancy/escopo por usuário nos dados (adequado ao time atual).
