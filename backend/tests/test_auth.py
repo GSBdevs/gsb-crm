@@ -35,13 +35,24 @@ async def test_bootstrap_login_refresh_me(client: AsyncClient):
     assert resp.json()["email"] == "arthur@gruposb.com"
     assert resp.json()["role"] == "admin"
 
-    # refresh gera novo par
+    # refresh gera novo par (rotação)
     resp = await client.post("/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
     assert resp.status_code == 200
-    assert resp.json()["access_token"]
+    new_tokens = resp.json()
+    assert new_tokens["access_token"]
+
+    # o refresh antigo foi revogado na rotação — reuso é rejeitado
+    resp = await client.post("/auth/refresh", json={"refresh_token": tokens["refresh_token"]})
+    assert resp.status_code == 401
 
     # access token não vale como refresh
-    resp = await client.post("/auth/refresh", json={"refresh_token": tokens["access_token"]})
+    resp = await client.post("/auth/refresh", json={"refresh_token": new_tokens["access_token"]})
+    assert resp.status_code == 401
+
+    # logout revoga o refresh atual
+    resp = await client.post("/auth/logout", json={"refresh_token": new_tokens["refresh_token"]})
+    assert resp.status_code == 204
+    resp = await client.post("/auth/refresh", json={"refresh_token": new_tokens["refresh_token"]})
     assert resp.status_code == 401
 
 
