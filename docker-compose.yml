@@ -8,7 +8,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crm}
       POSTGRES_DB: crm
     ports:
-      - "5432:5432"
+      # 5433 no host: a máquina de dev tem PostgreSQL nativo ocupando 5432
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

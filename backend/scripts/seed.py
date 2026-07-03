@@ -5,7 +5,6 @@ Uso (a partir de backend/): python scripts/seed.py
 Idempotente: não faz nada se já houver usuários.
 """
 
-import asyncio
 import random
 import sys
 from datetime import timedelta
@@ -14,6 +13,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from sqlalchemy import func, select  # noqa: E402
+
+from app.core.aio import run  # noqa: E402
 
 from app.core.database import engine, session_factory  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
@@ -345,4 +346,4 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    run(main())
