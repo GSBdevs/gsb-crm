@@ -159,11 +159,11 @@ export default function DashboardPage() {
             icon={UserPlus}
           />
           <KpiCard
-            title="Renovações em 90 dias"
-            value={String(s.renewals_next_90d)}
-            hint="contratos concorrentes vencendo — janela de ataque"
+            title="Clientes ativos"
+            value={String(s.active_accounts)}
+            hint={`${s.machines_total} máquina(s) em campo`}
             icon={Printer}
-            tone={s.renewals_next_90d > 0 ? "text-warning" : "text-primary"}
+            tone="text-success"
           />
           <KpiCard
             title="Atividades hoje"

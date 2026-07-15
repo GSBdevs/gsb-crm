@@ -26,9 +26,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { DetailField, DetailGrid, orDash } from "@/components/ui/detail";
 import { useDebounce } from "@/hooks/use-debounce";
 import { api, ApiError } from "@/lib/api";
-import { initials } from "@/lib/utils";
+import { formatDateTime, initials } from "@/lib/utils";
 import type { Account, Contact, Page } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Search, Trash2 } from "lucide-react";
@@ -41,7 +42,6 @@ interface ContactForm {
   email: string;
   phone: string;
   tags: string;
-  score: number;
   account_id: string;
 }
 
@@ -51,7 +51,6 @@ const EMPTY: ContactForm = {
   email: "",
   phone: "",
   tags: "",
-  score: 0,
   account_id: "none",
 };
 
@@ -65,6 +64,7 @@ export default function ContactsPage() {
   const [editing, setEditing] = useState<Contact | null>(null);
   const [form, setForm] = useState<ContactForm>(EMPTY);
   const [deleteTarget, setDeleteTarget] = useState<Contact | null>(null);
+  const [detailTarget, setDetailTarget] = useState<Contact | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["contacts", { q: debounced, page }],
@@ -88,7 +88,6 @@ export default function ContactsPage() {
         last_name: payload.last_name,
         email: payload.email || null,
         phone: payload.phone,
-        score: payload.score,
         tags: payload.tags
           .split(",")
           .map((t) => t.trim())
@@ -130,7 +129,6 @@ export default function ContactsPage() {
       email: contact.email ?? "",
       phone: contact.phone,
       tags: contact.tags.join(", "),
-      score: contact.score,
       account_id: contact.account_id ?? "none",
     });
     setFormOpen(true);
@@ -173,7 +171,6 @@ export default function ContactsPage() {
               <TableHead className="hidden md:table-cell">Telefone</TableHead>
               <TableHead className="hidden lg:table-cell">Conta</TableHead>
               <TableHead className="hidden md:table-cell">Tags</TableHead>
-              <TableHead>Score</TableHead>
               <TableHead className="w-20" />
             </TableRow>
           </TableHeader>
@@ -181,20 +178,24 @@ export default function ContactsPage() {
             {isLoading &&
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={6}>
+                  <TableCell colSpan={5}>
                     <Skeleton className="h-6 w-full" />
                   </TableCell>
                 </TableRow>
               ))}
             {!isLoading && (data?.items ?? []).length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={5} className="py-10 text-center text-muted-foreground">
                   Nenhum contato encontrado.
                 </TableCell>
               </TableRow>
             )}
             {(data?.items ?? []).map((contact) => (
-              <TableRow key={contact.id}>
+              <TableRow
+                key={contact.id}
+                className="cursor-pointer"
+                onClick={() => setDetailTarget(contact)}
+              >
                 <TableCell>
                   <div className="flex items-center gap-2.5">
                     <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
@@ -219,8 +220,7 @@ export default function ContactsPage() {
                     ))}
                   </div>
                 </TableCell>
-                <TableCell className="tabular-nums">{contact.score}</TableCell>
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <div className="flex justify-end gap-1">
                     <Button
                       variant="ghost"
@@ -327,16 +327,6 @@ export default function ContactsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label>Score</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={form.score}
-                  onChange={(e) => setForm({ ...form, score: Number(e.target.value) })}
-                />
-              </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label>Tags (separadas por vírgula)</Label>
                 <Input
@@ -357,6 +347,54 @@ export default function ContactsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de detalhes (somente leitura) */}
+      {detailTarget && (
+        <Dialog open onOpenChange={(open) => !open && setDetailTarget(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="pr-6">{detailTarget.full_name}</DialogTitle>
+              <DialogDescription>
+                Contato · criado em {formatDateTime(detailTarget.created_at)}
+              </DialogDescription>
+            </DialogHeader>
+            <DetailGrid>
+              <DetailField label="Email">{orDash(detailTarget.email)}</DetailField>
+              <DetailField label="Telefone">{orDash(detailTarget.phone)}</DetailField>
+              <DetailField label="Conta (empresa)">
+                {accountName(detailTarget.account_id)}
+              </DetailField>
+              <DetailField label="Tags">
+                {detailTarget.tags.length > 0 ? (
+                  <span className="flex flex-wrap gap-1">
+                    {detailTarget.tags.map((tag) => (
+                      <Badge key={tag} variant="secondary" className="text-[10px]">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </span>
+                ) : (
+                  "—"
+                )}
+              </DetailField>
+            </DetailGrid>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDetailTarget(null)}>
+                Fechar
+              </Button>
+              <Button
+                onClick={() => {
+                  const contact = detailTarget;
+                  setDetailTarget(null);
+                  openEdit(contact);
+                }}
+              >
+                <Pencil /> Editar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <Dialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent className="max-w-sm">

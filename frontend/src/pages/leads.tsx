@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DetailField, DetailGrid, DetailSection, orDash } from "@/components/ui/detail";
 import {
   Dialog,
   DialogContent,
@@ -36,12 +37,19 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useDebounce } from "@/hooks/use-debounce";
 import { api, ApiError } from "@/lib/api";
-import { formatDate, parseDate } from "@/lib/utils";
-import type { Contact, Lead, LeadInterest, LeadStatus, Opportunity, Page } from "@/types";
+import { formatDateTime } from "@/lib/utils";
+import type {
+  Contact,
+  Lead,
+  LeadInterest,
+  LeadStatus,
+  Opportunity,
+  Page,
+  PrinterType,
+} from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRightLeft,
-  CalendarClock,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -64,11 +72,16 @@ const INTEREST_LABEL: Record<LeadInterest, string> = {
   both: "Locação + TI",
 };
 
-function renewalInfo(iso: string | null): { label: string; soon: boolean } | null {
-  if (!iso) return null;
-  const days = Math.ceil((parseDate(iso).getTime() - Date.now()) / 86_400_000);
-  return { label: formatDate(iso), soon: days >= 0 && days <= 90 };
-}
+const PRINTER_TYPE_LABEL: Record<string, string> = {
+  a4_mono: "A4 mono",
+  a4_color: "A4 color",
+  a3_mono: "A3 mono",
+  a3_color: "A3 color",
+  mixed: "Misto (A4 + A3)",
+};
+
+const wantsPrinting = (interest: LeadInterest) => interest !== "it_outsourcing";
+const wantsIT = (interest: LeadInterest) => interest !== "printer_rental";
 
 interface LeadForm {
   name: string;
@@ -76,15 +89,19 @@ interface LeadForm {
   phone: string;
   company: string;
   cnpj: string;
+  city: string;
+  state: string;
   source: string;
-  score: number;
   notes: string;
   interest: LeadInterest;
   current_provider: string;
-  contract_renewal: string;
+  printer_type: PrinterType;
   printer_count: number;
   monthly_volume_mono: number;
   monthly_volume_color: number;
+  it_product: string;
+  it_quantity: number;
+  it_specs: string;
   status?: LeadStatus;
 }
 
@@ -94,15 +111,19 @@ const EMPTY_FORM: LeadForm = {
   phone: "",
   company: "",
   cnpj: "",
+  city: "",
+  state: "",
   source: "",
-  score: 0,
   notes: "",
   interest: "printer_rental",
   current_provider: "",
-  contract_renewal: "",
+  printer_type: "",
   printer_count: 0,
   monthly_volume_mono: 0,
   monthly_volume_color: 0,
+  it_product: "",
+  it_quantity: 0,
+  it_specs: "",
 };
 
 export default function LeadsPage() {
@@ -116,6 +137,7 @@ export default function LeadsPage() {
   const [editing, setEditing] = useState<Lead | null>(null);
   const [form, setForm] = useState<LeadForm>(EMPTY_FORM);
 
+  const [detailTarget, setDetailTarget] = useState<Lead | null>(null);
   const [convertTarget, setConvertTarget] = useState<Lead | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
 
@@ -139,10 +161,9 @@ export default function LeadsPage() {
 
   const saveMutation = useMutation({
     mutationFn: (payload: LeadForm) => {
-      const json = { ...payload, contract_renewal: payload.contract_renewal || null };
       return editing
-        ? api<Lead>(`/leads/${editing.id}`, { method: "PATCH", json })
-        : api<Lead>("/leads", { method: "POST", json });
+        ? api<Lead>(`/leads/${editing.id}`, { method: "PATCH", json: payload })
+        : api<Lead>("/leads", { method: "POST", json: payload });
     },
     onSuccess: () => {
       toast.success(editing ? "Lead atualizado" : "Lead criado");
@@ -176,15 +197,19 @@ export default function LeadsPage() {
       phone: lead.phone,
       company: lead.company,
       cnpj: lead.cnpj,
+      city: lead.city,
+      state: lead.state,
       source: lead.source,
-      score: lead.score,
       notes: lead.notes,
       interest: lead.interest,
       current_provider: lead.current_provider,
-      contract_renewal: lead.contract_renewal ?? "",
+      printer_type: lead.printer_type,
       printer_count: lead.printer_count,
       monthly_volume_mono: lead.monthly_volume_mono,
       monthly_volume_color: lead.monthly_volume_color,
+      it_product: lead.it_product,
+      it_quantity: lead.it_quantity,
+      it_specs: lead.it_specs,
       status: lead.status,
     });
     setFormOpen(true);
@@ -246,8 +271,7 @@ export default function LeadsPage() {
               <TableHead>Nome</TableHead>
               <TableHead className="hidden md:table-cell">Empresa</TableHead>
               <TableHead>Interesse</TableHead>
-              <TableHead className="hidden lg:table-cell">Renovação</TableHead>
-              <TableHead className="hidden md:table-cell">Score</TableHead>
+              <TableHead className="hidden lg:table-cell">Cidade</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-10" />
             </TableRow>
@@ -256,23 +280,26 @@ export default function LeadsPage() {
             {isLoading &&
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={7}>
+                  <TableCell colSpan={6}>
                     <Skeleton className="h-6 w-full" />
                   </TableCell>
                 </TableRow>
               ))}
             {!isLoading && (data?.items ?? []).length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                   Nenhum lead encontrado.
                 </TableCell>
               </TableRow>
             )}
             {(data?.items ?? []).map((lead) => {
               const status = STATUS_LABEL[lead.status];
-              const renewal = renewalInfo(lead.contract_renewal);
               return (
-                <TableRow key={lead.id}>
+                <TableRow
+                  key={lead.id}
+                  className="cursor-pointer"
+                  onClick={() => setDetailTarget(lead)}
+                >
                   <TableCell>
                     <p className="font-medium">{lead.name}</p>
                     <p className="text-xs text-muted-foreground">{lead.email || "—"}</p>
@@ -288,39 +315,13 @@ export default function LeadsPage() {
                   <TableCell>
                     <Badge variant="secondary">{INTEREST_LABEL[lead.interest]}</Badge>
                   </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {renewal ? (
-                      <span
-                        className={
-                          renewal.soon
-                            ? "flex items-center gap-1 font-medium text-warning"
-                            : "text-muted-foreground"
-                        }
-                      >
-                        {renewal.soon && <CalendarClock className="size-3.5" />}
-                        {renewal.label}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-14 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full rounded-full bg-primary"
-                          style={{ width: `${Math.min(lead.score, 100)}%` }}
-                        />
-                      </div>
-                      <span className="text-xs tabular-nums text-muted-foreground">
-                        {lead.score}
-                      </span>
-                    </div>
+                  <TableCell className="hidden text-muted-foreground lg:table-cell">
+                    {lead.city ? `${lead.city}${lead.state ? ` — ${lead.state}` : ""}` : "—"}
                   </TableCell>
                   <TableCell>
                     <Badge variant={status.variant}>{status.label}</Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="size-8">
@@ -377,13 +378,25 @@ export default function LeadsPage() {
         </div>
       )}
 
+      {/* Dialog de detalhes (somente leitura) */}
+      <LeadDetailDialog
+        lead={detailTarget}
+        onClose={() => setDetailTarget(null)}
+        onEdit={(lead) => {
+          setDetailTarget(null);
+          openEdit(lead);
+        }}
+      />
+
       {/* Dialog criar/editar */}
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editing ? "Editar lead" : "Novo lead"}</DialogTitle>
             <DialogDescription>
-              {editing ? "Atualize as informações do lead." : "Cadastre um novo lead no funil."}
+              {editing
+                ? "Atualize as informações do lead."
+                : "Etapa 1 — dados básicos. Etapa 2 — especificação do serviço."}
             </DialogDescription>
           </DialogHeader>
           <form
@@ -394,8 +407,8 @@ export default function LeadsPage() {
             }}
           >
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label>Nome *</Label>
+              <div className="space-y-1.5">
+                <Label>Contato (quem procurou) *</Label>
                 <Input
                   required
                   value={form.name}
@@ -418,7 +431,7 @@ export default function LeadsPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Empresa</Label>
+                <Label>Razão social / Empresa</Label>
                 <Input
                   value={form.company}
                   onChange={(e) => setForm({ ...form, company: e.target.value })}
@@ -432,6 +445,24 @@ export default function LeadsPage() {
                   onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
                 />
               </div>
+              <div className="grid grid-cols-[1fr_5rem] gap-2">
+                <div className="space-y-1.5">
+                  <Label>Cidade</Label>
+                  <Input
+                    value={form.city}
+                    onChange={(e) => setForm({ ...form, city: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>UF</Label>
+                  <Input
+                    maxLength={2}
+                    placeholder="SP"
+                    value={form.state}
+                    onChange={(e) => setForm({ ...form, state: e.target.value.toUpperCase() })}
+                  />
+                </div>
+              </div>
               <div className="space-y-1.5">
                 <Label>Origem</Label>
                 <Input
@@ -439,22 +470,6 @@ export default function LeadsPage() {
                   value={form.source}
                   onChange={(e) => setForm({ ...form, source: e.target.value })}
                 />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Score (0–100)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={form.score}
-                  onChange={(e) => setForm({ ...form, score: Number(e.target.value) })}
-                />
-              </div>
-
-              <div className="sm:col-span-2 mt-1 border-t border-border pt-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Qualificação — impressão & TI
-                </p>
               </div>
               <div className="space-y-1.5">
                 <Label>Interesse</Label>
@@ -472,53 +487,112 @@ export default function LeadsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label>Fornecedor atual</Label>
-                <Input
-                  placeholder="quem atende hoje"
-                  value={form.current_provider}
-                  onChange={(e) => setForm({ ...form, current_provider: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Renovação do contrato atual</Label>
-                <Input
-                  type="date"
-                  value={form.contract_renewal}
-                  onChange={(e) => setForm({ ...form, contract_renewal: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Nº de impressoras</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={form.printer_count}
-                  onChange={(e) => setForm({ ...form, printer_count: Number(e.target.value) })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Volume mensal P&B (págs)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={form.monthly_volume_mono}
-                  onChange={(e) =>
-                    setForm({ ...form, monthly_volume_mono: Number(e.target.value) })
-                  }
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Volume mensal color (págs)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={form.monthly_volume_color}
-                  onChange={(e) =>
-                    setForm({ ...form, monthly_volume_color: Number(e.target.value) })
-                  }
-                />
-              </div>
+
+              {wantsPrinting(form.interest) && (
+                <>
+                  <div className="sm:col-span-2 mt-1 border-t border-border pt-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Especificação — impressão
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Tipo de máquina</Label>
+                    <Select
+                      value={form.printer_type || "unset"}
+                      onValueChange={(v) =>
+                        setForm({ ...form, printer_type: (v === "unset" ? "" : v) as PrinterType })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unset">A definir</SelectItem>
+                        <SelectItem value="a4_mono">A4 mono</SelectItem>
+                        <SelectItem value="a4_color">A4 color</SelectItem>
+                        <SelectItem value="a3_mono">A3 mono</SelectItem>
+                        <SelectItem value="a3_color">A3 color</SelectItem>
+                        <SelectItem value="mixed">Misto (A4 + A3)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Nº de impressoras</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={form.printer_count}
+                      onChange={(e) => setForm({ ...form, printer_count: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Franquia mensal P&B (págs)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={form.monthly_volume_mono}
+                      onChange={(e) =>
+                        setForm({ ...form, monthly_volume_mono: Number(e.target.value) })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Franquia mensal color (págs)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={form.monthly_volume_color}
+                      onChange={(e) =>
+                        setForm({ ...form, monthly_volume_color: Number(e.target.value) })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Fornecedor atual</Label>
+                    <Input
+                      placeholder="quem atende hoje (se houver)"
+                      value={form.current_provider}
+                      onChange={(e) => setForm({ ...form, current_provider: e.target.value })}
+                    />
+                  </div>
+                </>
+              )}
+
+              {wantsIT(form.interest) && (
+                <>
+                  <div className="sm:col-span-2 mt-1 border-t border-border pt-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Especificação — outsourcing de tecnologia
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Produto</Label>
+                    <Input
+                      placeholder="notebooks, desktops, firewall…"
+                      value={form.it_product}
+                      onChange={(e) => setForm({ ...form, it_product: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Quantidade</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={form.it_quantity}
+                      onChange={(e) => setForm({ ...form, it_quantity: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Especificações</Label>
+                    <Textarea
+                      placeholder="configuração, requisitos, observações técnicas…"
+                      value={form.it_specs}
+                      onChange={(e) => setForm({ ...form, it_specs: e.target.value })}
+                    />
+                  </div>
+                </>
+              )}
+
               {editing && (
                 <div className="space-y-1.5">
                   <Label>Status</Label>
@@ -592,6 +666,94 @@ export default function LeadsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function LeadDetailDialog({
+  lead,
+  onClose,
+  onEdit,
+}: {
+  lead: Lead | null;
+  onClose: () => void;
+  onEdit: (lead: Lead) => void;
+}) {
+  if (lead === null) return null;
+  const status = STATUS_LABEL[lead.status];
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle className="flex flex-wrap items-center gap-2 pr-6">
+            {lead.name}
+            <Badge variant={status.variant}>{status.label}</Badge>
+          </DialogTitle>
+          <DialogDescription>
+            {INTEREST_LABEL[lead.interest]} · criado em {formatDateTime(lead.created_at)}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <DetailGrid>
+            <DetailField label="Razão social / Empresa">{orDash(lead.company)}</DetailField>
+            <DetailField label="CNPJ">{orDash(lead.cnpj)}</DetailField>
+            <DetailField label="Localização">
+              {lead.city ? `${lead.city}${lead.state ? ` — ${lead.state}` : ""}` : "—"}
+            </DetailField>
+            <DetailField label="Origem">{orDash(lead.source)}</DetailField>
+            <DetailField label="Email">{orDash(lead.email)}</DetailField>
+            <DetailField label="Telefone">{orDash(lead.phone)}</DetailField>
+          </DetailGrid>
+
+          {wantsPrinting(lead.interest) && (
+            <DetailSection title="Especificação — impressão">
+              <DetailGrid>
+                <DetailField label="Tipo de máquina">
+                  {PRINTER_TYPE_LABEL[lead.printer_type] ?? "A definir"}
+                </DetailField>
+                <DetailField label="Nº de impressoras">
+                  {lead.printer_count || "—"}
+                </DetailField>
+                <DetailField label="Franquia mensal P&B">
+                  {lead.monthly_volume_mono ? `${lead.monthly_volume_mono} págs` : "—"}
+                </DetailField>
+                <DetailField label="Franquia mensal color">
+                  {lead.monthly_volume_color ? `${lead.monthly_volume_color} págs` : "—"}
+                </DetailField>
+                <DetailField label="Fornecedor atual" full>
+                  {orDash(lead.current_provider)}
+                </DetailField>
+              </DetailGrid>
+            </DetailSection>
+          )}
+
+          {wantsIT(lead.interest) && (
+            <DetailSection title="Especificação — outsourcing de tecnologia">
+              <DetailGrid>
+                <DetailField label="Produto">{orDash(lead.it_product)}</DetailField>
+                <DetailField label="Quantidade">{lead.it_quantity || "—"}</DetailField>
+                <DetailField label="Especificações" full>
+                  {orDash(lead.it_specs)}
+                </DetailField>
+              </DetailGrid>
+            </DetailSection>
+          )}
+
+          {lead.notes && (
+            <DetailSection title="Notas">
+              <p className="whitespace-pre-wrap text-sm">{lead.notes}</p>
+            </DetailSection>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Fechar
+          </Button>
+          <Button onClick={() => onEdit(lead)}>
+            <Pencil /> Editar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

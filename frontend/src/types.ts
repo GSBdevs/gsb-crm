@@ -25,6 +25,7 @@ export interface Page<T> {
 
 export type LeadStatus = "new" | "qualified" | "converted" | "lost";
 export type LeadInterest = "printer_rental" | "it_outsourcing" | "both";
+export type PrinterType = "" | "a4_mono" | "a4_color" | "a3_mono" | "a3_color" | "mixed";
 
 export interface Lead {
   id: string;
@@ -33,6 +34,8 @@ export interface Lead {
   phone: string;
   company: string;
   cnpj: string;
+  city: string;
+  state: string;
   source: string;
   status: LeadStatus;
   score: number;
@@ -40,9 +43,13 @@ export interface Lead {
   interest: LeadInterest;
   current_provider: string;
   contract_renewal: string | null;
+  printer_type: PrinterType;
   printer_count: number;
   monthly_volume_mono: number;
   monthly_volume_color: number;
+  it_product: string;
+  it_quantity: number;
+  it_specs: string;
   converted_at: string | null;
   converted_contact_id: string | null;
   converted_opportunity_id: string | null;
@@ -51,6 +58,7 @@ export interface Lead {
 }
 
 export type AccountSize = "S" | "M" | "L" | "XL";
+export type AccountStatus = "prospect" | "active" | "inactive";
 
 export interface Account {
   id: string;
@@ -58,12 +66,22 @@ export interface Account {
   domain: string;
   industry: string;
   size: AccountSize;
+  status: AccountStatus;
   cnpj: string;
   city: string;
   state: string;
   custom_fields: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+}
+
+export interface Machine {
+  id: string;
+  account_id: string;
+  name: string;
+  serial_number: string;
+  notes: string;
+  created_at: string;
 }
 
 export interface Contact {
@@ -186,7 +204,8 @@ export interface Summary {
   open_opportunities: number;
   open_value: number;
   mrr_open: number;
-  renewals_next_90d: number;
+  active_accounts: number;
+  machines_total: number;
   won_value_month: number;
   activities_due_today: number;
   activities_overdue: number;
