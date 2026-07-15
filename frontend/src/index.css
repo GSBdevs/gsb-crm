@@ -62,6 +62,16 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    /* brilho amarelo bem sutil no topo — dá profundidade sem sair do tema */
+    background-image: radial-gradient(
+      1100px 480px at 75% -10%,
+      oklch(0.83 0.16 90 / 0.055),
+      transparent 60%
+    );
+    background-attachment: fixed;
+  }
+  ::selection {
+    background: oklch(0.83 0.16 90 / 0.35);
   }
   ::-webkit-scrollbar {
     width: 8px;

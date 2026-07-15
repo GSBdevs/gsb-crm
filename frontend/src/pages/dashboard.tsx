@@ -50,6 +50,12 @@ const TOOLTIP_STYLE = {
   fontSize: 12,
 };
 
+// Recharts usa #666 por padrão nos eixos — ilegível no tema escuro
+const AXIS_TICK = { fontSize: 11, fill: CHART.gray };
+const TOOLTIP_LABEL = { color: "oklch(0.96 0 0)", fontWeight: 600 };
+const LEGEND_STYLE = { fontSize: 12 };
+const CURSOR_FILL = { fill: "oklch(0.26 0.012 90 / 0.35)" };
+
 function KpiCard({
   title,
   value,
@@ -64,15 +70,19 @@ function KpiCard({
   tone?: string;
 }) {
   return (
-    <Card>
-      <CardContent className="flex items-center gap-4 p-5">
-        <div className={`rounded-lg bg-primary/10 p-2.5 ${tone}`}>
-          <Icon className="size-5" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-xs text-muted-foreground">{title}</p>
-          <p className="truncate text-xl font-bold">{value}</p>
-          {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+    <Card className="transition-colors hover:border-primary/40">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {title}
+            </p>
+            <p className="mt-1.5 truncate text-2xl font-bold tracking-tight">{value}</p>
+            {hint && <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>}
+          </div>
+          <div className={`shrink-0 rounded-lg bg-primary/10 p-2.5 ${tone}`}>
+            <Icon className="size-5" />
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -174,13 +184,25 @@ export default function DashboardPage() {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={byStage.data ?? []} margin={{ left: 12 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
-                <XAxis dataKey="stage" tick={{ fontSize: 11 }} interval={0} angle={-15} dy={8} />
+                <XAxis
+                  dataKey="stage"
+                  tick={AXIS_TICK}
+                  interval={0}
+                  angle={-15}
+                  dy={8}
+                  axisLine={{ stroke: CHART.grid }}
+                  tickLine={{ stroke: CHART.grid }}
+                />
                 <YAxis
-                  tick={{ fontSize: 11 }}
+                  tick={AXIS_TICK}
                   tickFormatter={(v: number) => `${Math.round(v / 1000)}k`}
+                  axisLine={{ stroke: CHART.grid }}
+                  tickLine={{ stroke: CHART.grid }}
                 />
                 <Tooltip
                   contentStyle={TOOLTIP_STYLE}
+                  labelStyle={TOOLTIP_LABEL}
+                  cursor={CURSOR_FILL}
                   formatter={(value) => [formatBRL(Number(value)), "Valor"]}
                 />
                 <Bar dataKey="value" radius={[6, 6, 0, 0]}>
@@ -211,10 +233,25 @@ export default function DashboardPage() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
-                <XAxis dataKey="period" tickFormatter={monthLabel} tick={{ fontSize: 11 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} labelFormatter={monthLabel} />
-                <Legend />
+                <XAxis
+                  dataKey="period"
+                  tickFormatter={monthLabel}
+                  tick={AXIS_TICK}
+                  axisLine={{ stroke: CHART.grid }}
+                  tickLine={{ stroke: CHART.grid }}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tick={AXIS_TICK}
+                  axisLine={{ stroke: CHART.grid }}
+                  tickLine={{ stroke: CHART.grid }}
+                />
+                <Tooltip
+                  contentStyle={TOOLTIP_STYLE}
+                  labelStyle={TOOLTIP_LABEL}
+                  labelFormatter={monthLabel}
+                />
+                <Legend wrapperStyle={LEGEND_STYLE} />
                 <Area
                   type="monotone"
                   dataKey="created"
@@ -244,12 +281,19 @@ export default function DashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
                 <XAxis
                   dataKey="day"
-                  tick={{ fontSize: 10 }}
+                  tick={{ ...AXIS_TICK, fontSize: 10 }}
                   tickFormatter={(d: string) => d.slice(8)}
+                  axisLine={{ stroke: CHART.grid }}
+                  tickLine={{ stroke: CHART.grid }}
                 />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} />
-                <Legend />
+                <YAxis
+                  allowDecimals={false}
+                  tick={AXIS_TICK}
+                  axisLine={{ stroke: CHART.grid }}
+                  tickLine={{ stroke: CHART.grid }}
+                />
+                <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={TOOLTIP_LABEL} cursor={CURSOR_FILL} />
+                <Legend wrapperStyle={LEGEND_STYLE} />
                 <Bar dataKey="call" name="Ligações" stackId="a" fill={CHART.yellow} />
                 <Bar dataKey="email" name="Emails" stackId="a" fill={CHART.gray} />
                 <Bar dataKey="meeting" name="Reuniões" stackId="a" fill={CHART.amber} />
@@ -279,17 +323,26 @@ export default function DashboardPage() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke={CHART.grid} />
-                <XAxis dataKey="period" tickFormatter={monthLabel} tick={{ fontSize: 11 }} />
+                <XAxis
+                  dataKey="period"
+                  tickFormatter={monthLabel}
+                  tick={AXIS_TICK}
+                  axisLine={{ stroke: CHART.grid }}
+                  tickLine={{ stroke: CHART.grid }}
+                />
                 <YAxis
-                  tick={{ fontSize: 11 }}
+                  tick={AXIS_TICK}
                   tickFormatter={(v: number) => `${Math.round(v / 1000)}k`}
+                  axisLine={{ stroke: CHART.grid }}
+                  tickLine={{ stroke: CHART.grid }}
                 />
                 <Tooltip
                   contentStyle={TOOLTIP_STYLE}
+                  labelStyle={TOOLTIP_LABEL}
                   labelFormatter={monthLabel}
                   formatter={(value, name) => [formatBRL(Number(value)), String(name)]}
                 />
-                <Legend />
+                <Legend wrapperStyle={LEGEND_STYLE} />
                 <Area
                   type="monotone"
                   dataKey="total"

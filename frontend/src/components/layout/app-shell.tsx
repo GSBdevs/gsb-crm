@@ -26,17 +26,31 @@ import {
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router";
 
-const NAV = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/leads", label: "Leads", icon: UserPlus },
-  { to: "/pipeline", label: "Pipeline", icon: KanbanSquare },
-  { to: "/contatos", label: "Contatos", icon: Contact },
-  { to: "/contas", label: "Contas", icon: Building2 },
-  { to: "/atividades", label: "Atividades", icon: CalendarCheck },
-  { to: "/workflows", label: "Workflows", icon: Workflow },
+const NAV_SECTIONS = [
+  {
+    label: null,
+    items: [{ to: "/", label: "Dashboard", icon: LayoutDashboard }],
+  },
+  {
+    label: "Comercial",
+    items: [
+      { to: "/leads", label: "Leads", icon: UserPlus },
+      { to: "/pipeline", label: "Pipeline", icon: KanbanSquare },
+      { to: "/contatos", label: "Contatos", icon: Contact },
+      { to: "/contas", label: "Contas", icon: Building2 },
+    ],
+  },
+  {
+    label: "Operação",
+    items: [
+      { to: "/atividades", label: "Atividades", icon: CalendarCheck },
+      { to: "/workflows", label: "Workflows", icon: Workflow },
+    ],
+  },
 ];
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+  const { user } = useAuth();
   return (
     <>
       <div className="flex h-14 items-center gap-2 border-b border-border px-4">
@@ -45,27 +59,57 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           GrupoSB <span className="text-primary">CRM</span>
         </span>
       </div>
-      <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
-        {NAV.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === "/"}
-            onClick={onNavigate}
-            className={({ isActive }) =>
-              cn(
-                "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
-                isActive && "bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary",
-              )
-            }
-          >
-            <Icon className="size-4" />
-            {label}
-          </NavLink>
+      <nav className="flex-1 space-y-4 overflow-y-auto p-2 pt-3">
+        {NAV_SECTIONS.map((section) => (
+          <div key={section.label ?? "root"} className="space-y-0.5">
+            {section.label && (
+              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+                {section.label}
+              </p>
+            )}
+            {section.items.map(({ to, label, icon: Icon }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={to === "/"}
+                onClick={onNavigate}
+                className={({ isActive }) =>
+                  cn(
+                    "group relative flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                    isActive &&
+                      "bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary",
+                  )
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    {/* barra de item ativo */}
+                    <span
+                      className={cn(
+                        "absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-primary opacity-0 transition-opacity",
+                        isActive && "opacity-100",
+                      )}
+                    />
+                    <Icon className="size-4" />
+                    {label}
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </div>
         ))}
       </nav>
-      <div className="border-t border-border p-3 text-[11px] text-muted-foreground">
-        v0.1.0 — FastAPI + React
+      <div className="border-t border-border p-3">
+        <div className="flex items-center gap-2.5 rounded-lg bg-accent/40 px-2.5 py-2">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
+            {initials(user?.full_name || user?.email || "?")}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-xs font-semibold">{user?.full_name || user?.email}</p>
+            <p className="truncate text-[10px] capitalize text-muted-foreground">{user?.role}</p>
+          </div>
+        </div>
+        <p className="mt-2 px-1 text-[10px] text-muted-foreground/70">v0.1.0 — FastAPI + React</p>
       </div>
     </>
   );
@@ -101,7 +145,7 @@ export function AppShell() {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card/40 px-4">
+        <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card/40 px-4 backdrop-blur">
           <div className="flex items-center gap-2 md:hidden">
             <Button variant="ghost" size="icon" onClick={() => setMobileNavOpen(true)}>
               <Menu className="size-5" />
@@ -138,7 +182,9 @@ export function AppShell() {
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          <Outlet />
+          <div className="mx-auto w-full max-w-7xl">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

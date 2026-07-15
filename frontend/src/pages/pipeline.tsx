@@ -189,9 +189,14 @@ export default function PipelinePage() {
                                 ref={dragProvided.innerRef}
                                 {...dragProvided.draggableProps}
                                 {...dragProvided.dragHandleProps}
+                                style={{
+                                  ...dragProvided.draggableProps.style,
+                                  borderLeftColor: stage.color,
+                                }}
                                 className={cn(
-                                  "group rounded-lg border border-border bg-card p-3 shadow-sm transition-shadow",
-                                  dragSnapshot.isDragging && "rotate-1 shadow-lg ring-1 ring-primary/40",
+                                  "group cursor-grab rounded-lg border border-border border-l-[3px] bg-card p-3 shadow-sm transition-shadow hover:border-primary/30 hover:shadow-md active:cursor-grabbing",
+                                  dragSnapshot.isDragging &&
+                                    "rotate-1 shadow-lg ring-1 ring-primary/40",
                                 )}
                               >
                                 <div className="flex items-start justify-between gap-2">
@@ -258,7 +263,12 @@ export default function PipelinePage() {
         </DragDropContext>
       )}
 
-      <AddOpportunityDialog stage={addStage} onClose={() => setAddStage(null)} />
+      {/* key remonta o form a cada abertura (evita estado herdado entre estágios) */}
+      <AddOpportunityDialog
+        key={addStage?.id ?? "closed"}
+        stage={addStage}
+        onClose={() => setAddStage(null)}
+      />
 
       <Dialog open={deleteTarget !== null} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent className="max-w-sm">
