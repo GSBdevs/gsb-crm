@@ -11,8 +11,20 @@ class Settings(BaseSettings):
     # >= 32 bytes exigidos pelo HS256; troque em produção.
     secret_key: str = "dev-secret-troque-em-producao-0000000000"
 
+    # Bind do servidor (run.py). Use API_HOST=0.0.0.0 para expor na rede local.
+    api_host: str = "127.0.0.1"
+    api_port: int = 8000
+
+    # Caminho do build do frontend (frontend/dist). Se preenchido, a API serve a
+    # SPA na raiz — origem única, sem CORS. Vazio = API pura (dev com Vite).
+    frontend_dist: str = ""
+
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
+
+    # Rate-limit do login: nº de falhas por IP dentro da janela antes do 429.
+    login_max_failures: int = 10
+    login_window_seconds: int = 300
 
     # Default de dev: SQLite local, zero infraestrutura. Produção/Docker: Postgres.
     database_url: str = "sqlite+aiosqlite:///./crm_dev.db"

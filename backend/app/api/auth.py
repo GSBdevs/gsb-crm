@@ -1,15 +1,46 @@
+import time
 import uuid
+from collections import defaultdict, deque
 
 import jwt
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import func, select
 
+from app.core.config import settings
 from app.core.deps import CurrentUser, DbSession
 from app.core.security import create_token_pair, decode_token, hash_password, verify_password
 from app.models import RefreshToken, User, UserRole, utcnow
 from app.schemas.auth import BootstrapIn, LoginIn, RefreshIn, TokenPair, UserOut
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+# Rate-limit de login por IP, em memória (suficiente para 1 processo em rede local).
+# Só falhas contam; sucesso zera o contador do IP.
+_login_failures: dict[str, deque[float]] = defaultdict(deque)
+
+
+def _client_ip(request: Request) -> str:
+    return request.client.host if request.client else "unknown"
+
+
+def _check_login_rate(ip: str) -> None:
+    window = _login_failures[ip]
+    cutoff = time.monotonic() - settings.login_window_seconds
+    while window and window[0] < cutoff:
+        window.popleft()
+    if len(window) >= settings.login_max_failures:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Muitas tentativas de login — aguarde alguns minutos",
+        )
+
+
+def _register_login_failure(ip: str) -> None:
+    _login_failures[ip].append(time.monotonic())
+
+
+def _reset_login_failures(ip: str) -> None:
+    _login_failures.pop(ip, None)
 
 
 async def _issue_tokens(db: DbSession, user: User) -> dict:
@@ -25,12 +56,17 @@ async def _issue_tokens(db: DbSession, user: User) -> dict:
 
 
 @router.post("/login", response_model=TokenPair)
-async def login(data: LoginIn, db: DbSession):
+async def login(data: LoginIn, db: DbSession, request: Request):
+    ip = _client_ip(request)
+    _check_login_rate(ip)
     user = await db.scalar(select(User).where(User.email == data.email))
     if user is None or not verify_password(data.password, user.hashed_password):
+        _register_login_failure(ip)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Email ou senha incorretos")
     if not user.is_active:
+        _register_login_failure(ip)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Usuário desativado")
+    _reset_login_failures(ip)
     return await _issue_tokens(db, user)
 
 

@@ -1,5 +1,8 @@
 from httpx import AsyncClient
 
+from app.api.auth import _login_failures
+from app.core.config import settings
+
 
 async def test_bootstrap_login_refresh_me(client: AsyncClient):
     # bootstrap cria o primeiro admin
@@ -59,6 +62,22 @@ async def test_bootstrap_login_refresh_me(client: AsyncClient):
 async def test_protected_routes_require_token(client: AsyncClient):
     resp = await client.get("/leads")
     assert resp.status_code == 401
+
+
+async def test_login_rate_limit_blocks_brute_force(client: AsyncClient):
+    _login_failures.clear()  # estado global em memória — isola dos demais testes
+    try:
+        for _ in range(settings.login_max_failures):
+            resp = await client.post(
+                "/auth/login", json={"email": "atacante@x.com", "password": "errada00"}
+            )
+            assert resp.status_code == 401
+        resp = await client.post(
+            "/auth/login", json={"email": "atacante@x.com", "password": "errada00"}
+        )
+        assert resp.status_code == 429
+    finally:
+        _login_failures.clear()
 
 
 async def test_admin_can_manage_users(client: AsyncClient, auth_headers):

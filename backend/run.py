@@ -11,10 +11,12 @@ Nota: sem --reload. Para hot-reload use o modo SQLite (sem .env) ou docker compo
 import uvicorn
 
 from app.core.aio import run
+from app.core.config import settings
 
 
 async def _serve() -> None:
-    config = uvicorn.Config("app.main:app", host="127.0.0.1", port=8000)
+    # Bind configurável: API_HOST=0.0.0.0 + API_PORT no .env expõem na rede local.
+    config = uvicorn.Config("app.main:app", host=settings.api_host, port=settings.api_port)
     await uvicorn.Server(config).serve()
 
 
