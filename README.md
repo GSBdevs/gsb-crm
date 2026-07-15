@@ -53,8 +53,8 @@ npm run dev              # http://localhost:5173
 
 ```powershell
 cd backend
-.venv\Scripts\python -m pytest        # 14 testes: auth (rotação/revogação/rate-limit), leads+conversão,
-                                      # kanban, workflows, notificações por usuário, relatórios
+.venv\Scripts\python -m pytest        # 16 testes: auth (rotação/revogação/rate-limit), leads+conversão,
+                                      # contas+máquinas, kanban, workflows, notificações, relatórios
 cd ..\frontend
 npm run build                         # type-check (tsc -b) + build Vite
 ```
@@ -112,12 +112,20 @@ saíram do jogo: Fly.io e Koyeb encerraram os planos gratuitos.
 
 ## Domínio: locação de impressoras & outsourcing de TI
 
-Campos de qualificação baseados em como o setor (MPS/outsourcing de impressão) prospecta:
+O funil segue o processo comercial real do GrupoSB:
 
-- **Lead**: interesse (`printer_rental` | `it_outsourcing` | `both`), fornecedor atual, **data de renovação do contrato concorrente** (principal gatilho de timing), nº de impressoras, volume mensal P&B/color, CNPJ.
+1. **Novo contato** — o cliente procura; coleta de dados básicos (razão social, CNPJ, localização, pessoa de contato).
+2. **Especificação** — levantamento do serviço: impressão (tipo de máquina A4/A3 mono/color, nº de impressoras, franquia mensal de páginas sem excedente) e/ou outsourcing de TI (produto, quantidade, especificações).
+3. **Proposta enviada** — aguardando resposta do cliente.
+4. **Contrato** — elaboração/assinatura.
+5. **Contrato iniciado** (ganho) · **Perdido**.
+
+Modelagem:
+
+- **Lead**: dados básicos + interesse (`printer_rental` | `it_outsourcing` | `both`) + especificação por linha de serviço (tipo de máquina, franquias P&B/color, produto/quantidade/specs de TI).
 - **Opportunity**: tipo de serviço, cobrança (`monthly` = recorrente/MRR ou `one_time`), prazo em meses; `value` é o **valor mensal** quando recorrente e `total_value` = mensal × prazo.
-- **Account**: CNPJ, cidade, UF.
-- **Dashboard**: KPIs de MRR em pipeline e renovações concorrentes nos próximos 90 dias.
+- **Account**: status do ciclo de vida (**possível cliente → cliente ativo → cliente inativo**), CNPJ, cidade, UF. Ganhar uma oportunidade ativa a conta automaticamente. Contas ativas registram **máquinas instaladas** (nome + nº de série) e mostram contratos e contatos vinculados na tela de detalhe.
+- **Dashboard**: KPIs de MRR em pipeline, clientes ativos e máquinas em campo.
 - **Workflows**: condições podem usar os campos acima (ex.: `printer_count >= 10` → notificar).
 
 ## Estrutura
@@ -179,6 +187,9 @@ Notas do Windows: psycopg async exige SelectorEventLoop (ver `app/core/aio.py` e
 
 ## Resolvido recentemente (jul/2026)
 
+- Select dentro de dialog fechava o modal junto ao clicar fora do dropdown (guard no `DialogContent`).
+- Funil realinhado ao processo comercial real; contas com status de ciclo de vida e máquinas registradas.
+- Leads/contatos/contas com tela de detalhe somente leitura (clique na linha); Renovação/Score removidos da UI.
 - Datas puras exibidas com 1 dia a menos no fuso do Brasil (parse UTC no frontend).
 - Timestamps serializados sem offset UTC no modo SQLite (3 h de erro na exibição).
 - Dialogs reabertos herdavam estado do uso anterior (converter lead, nova oportunidade/atividade/regra).
