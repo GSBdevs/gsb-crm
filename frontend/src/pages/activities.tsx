@@ -175,7 +175,13 @@ export default function ActivitiesPage() {
         })}
       </div>
 
-      <ActivityFormDialog open={formOpen} onClose={() => setFormOpen(false)} onSaved={invalidate} />
+      {/* key remonta o form a cada abertura (evita estado herdado de aberturas anteriores) */}
+      <ActivityFormDialog
+        key={formOpen ? "open" : "closed"}
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        onSaved={invalidate}
+      />
     </div>
   );
 }

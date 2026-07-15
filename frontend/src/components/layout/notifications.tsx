@@ -31,6 +31,11 @@ export function NotificationsBell() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   });
 
+  const markOne = useMutation({
+    mutationFn: (id: string) => api(`/notifications/${id}/read`, { method: "POST" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications"] }),
+  });
+
   const count = unread?.count ?? 0;
 
   return (
@@ -67,9 +72,11 @@ export function NotificationsBell() {
           {(notifications ?? []).map((n) => (
             <div
               key={n.id}
+              onClick={() => !n.is_read && markOne.mutate(n.id)}
+              title={n.is_read ? undefined : "Marcar como lida"}
               className={cn(
                 "border-b border-border/60 px-2 py-2 last:border-0",
-                !n.is_read && "bg-primary/5",
+                !n.is_read && "cursor-pointer bg-primary/5 hover:bg-primary/10",
               )}
             >
               <div className="flex items-start gap-2">

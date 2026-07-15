@@ -196,7 +196,7 @@ export default function WorkflowsPage() {
 
       {meta && (
         <RuleFormDialog
-          key={editing?.id ?? "new"}
+          key={formOpen ? (editing?.id ?? "new") : "closed"}
           open={formOpen}
           meta={meta}
           rule={editing}

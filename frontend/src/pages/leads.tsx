@@ -36,7 +36,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useDebounce } from "@/hooks/use-debounce";
 import { api, ApiError } from "@/lib/api";
-import { formatDate } from "@/lib/utils";
+import { formatDate, parseDate } from "@/lib/utils";
 import type { Contact, Lead, LeadInterest, LeadStatus, Opportunity, Page } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -66,7 +66,7 @@ const INTEREST_LABEL: Record<LeadInterest, string> = {
 
 function renewalInfo(iso: string | null): { label: string; soon: boolean } | null {
   if (!iso) return null;
-  const days = Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000);
+  const days = Math.ceil((parseDate(iso).getTime() - Date.now()) / 86_400_000);
   return { label: formatDate(iso), soon: days >= 0 && days <= 90 };
 }
 
@@ -560,8 +560,9 @@ export default function LeadsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog conversão */}
+      {/* Dialog conversão — key remonta o form a cada lead (evita estado herdado) */}
       <ConvertDialog
+        key={convertTarget?.id ?? "closed"}
         lead={convertTarget}
         onClose={() => setConvertTarget(null)}
         onConverted={invalidate}
