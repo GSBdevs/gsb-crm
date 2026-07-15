@@ -7,6 +7,22 @@ const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
 const DialogClose = DialogPrimitive.Close;
 
+// Quando um Select/Dropdown (popper) está aberto dentro do dialog, o clique que o
+// dispensa não pode fechar o dialog junto. No onPointerDownOutside o popper já foi
+// desmontado, então o estado precisa ser capturado ANTES, na fase de captura.
+let popperOpenOnPointerDown = false;
+if (typeof document !== "undefined") {
+  document.addEventListener(
+    "pointerdown",
+    () => {
+      popperOpenOnPointerDown = Boolean(
+        document.querySelector("[data-radix-popper-content-wrapper]"),
+      );
+    },
+    { capture: true },
+  );
+}
+
 function DialogContent({
   className,
   children,
@@ -19,9 +35,16 @@ function DialogContent({
         className={cn(
           "fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 border border-border bg-card p-6 shadow-xl sm:rounded-xl",
           "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
-          "max-h-[90vh] overflow-y-auto",
+          "max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain",
           className,
         )}
+        onPointerDownOutside={(event) => {
+          // Com um Select/popover aberto, o clique "fora" serve para dispensá-lo —
+          // sem este guard o Radix fecha o popover E o dialog no mesmo clique.
+          if (popperOpenOnPointerDown) {
+            event.preventDefault();
+          }
+        }}
         {...props}
       >
         {children}

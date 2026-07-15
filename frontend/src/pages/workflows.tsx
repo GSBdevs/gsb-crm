@@ -350,12 +350,12 @@ function RuleFormDialog({
               </p>
             )}
             {conditions.map((condition, index) => (
-              <div key={index} className="flex items-center gap-2">
+              <div key={index} className="flex flex-wrap items-center gap-2">
                 <Select
                   value={condition.field}
                   onValueChange={(v) => updateCondition(index, { field: v })}
                 >
-                  <SelectTrigger className="w-40">
+                  <SelectTrigger className="w-40 shrink-0">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -383,7 +383,7 @@ function RuleFormDialog({
                 </Select>
                 {!["is_empty", "not_empty"].includes(condition.op) && (
                   <Input
-                    className="flex-1"
+                    className="min-w-32 flex-1"
                     placeholder="valor"
                     value={String(condition.value ?? "")}
                     onChange={(e) => updateCondition(index, { value: e.target.value })}
