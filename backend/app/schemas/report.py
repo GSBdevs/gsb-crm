@@ -7,7 +7,8 @@ class SummaryOut(BaseModel):
     open_opportunities: int
     open_value: float
     mrr_open: float
-    renewals_next_90d: int
+    active_accounts: int
+    machines_total: int
     won_value_month: float
     activities_due_today: int
     activities_overdue: int

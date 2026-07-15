@@ -15,15 +15,21 @@ class LeadCreate(BaseModel):
     phone: str = ""
     company: str = ""
     cnpj: str = ""
+    city: str = ""
+    state: str = ""
     source: str = ""
     score: int = 0
     notes: str = ""
     interest: LeadInterest = LeadInterest.PRINTER_RENTAL
     current_provider: str = ""
     contract_renewal: date | None = None
+    printer_type: str = ""
     printer_count: int = Field(default=0, ge=0)
     monthly_volume_mono: int = Field(default=0, ge=0)
     monthly_volume_color: int = Field(default=0, ge=0)
+    it_product: str = ""
+    it_quantity: int = Field(default=0, ge=0)
+    it_specs: str = ""
 
 
 class LeadUpdate(BaseModel):
@@ -32,6 +38,8 @@ class LeadUpdate(BaseModel):
     phone: str | None = None
     company: str | None = None
     cnpj: str | None = None
+    city: str | None = None
+    state: str | None = None
     source: str | None = None
     status: LeadStatus | None = None
     score: int | None = None
@@ -39,9 +47,13 @@ class LeadUpdate(BaseModel):
     interest: LeadInterest | None = None
     current_provider: str | None = None
     contract_renewal: date | None = None
+    printer_type: str | None = None
     printer_count: int | None = Field(default=None, ge=0)
     monthly_volume_mono: int | None = Field(default=None, ge=0)
     monthly_volume_color: int | None = Field(default=None, ge=0)
+    it_product: str | None = None
+    it_quantity: int | None = Field(default=None, ge=0)
+    it_specs: str | None = None
 
 
 class LeadOut(BaseModel):
@@ -53,6 +65,8 @@ class LeadOut(BaseModel):
     phone: str
     company: str
     cnpj: str
+    city: str
+    state: str
     source: str
     status: LeadStatus
     score: int
@@ -60,9 +74,13 @@ class LeadOut(BaseModel):
     interest: LeadInterest
     current_provider: str
     contract_renewal: date | None
+    printer_type: str
     printer_count: int
     monthly_volume_mono: int
     monthly_volume_color: int
+    it_product: str
+    it_quantity: int
+    it_specs: str
     converted_at: UTCDateTime | None
     converted_contact_id: uuid.UUID | None
     converted_opportunity_id: uuid.UUID | None

@@ -38,16 +38,27 @@ class Lead(TableBase):
     score: Mapped[int] = mapped_column(Integer, default=0)
     notes: Mapped[str] = mapped_column(Text, default="")
 
-    # --- Qualificação específica do setor (locação de impressoras / outsourcing TI) ---
+    # --- Dados básicos da empresa (etapa 1 do funil: coleta de informações) ---
+    city: Mapped[str] = mapped_column(String(120), default="")
+    state: Mapped[str] = mapped_column(String(2), default="")
+
+    # --- Especificação do serviço (etapa 2 do funil) ---
     interest: Mapped[LeadInterest] = mapped_column(
         Enum(LeadInterest, native_enum=False, length=20), default=LeadInterest.PRINTER_RENTAL
     )
     current_provider: Mapped[str] = mapped_column(String(255), default="")
-    # Fim do contrato com o fornecedor atual — principal gatilho de timing da prospecção.
+    # Depreciado no funil atual (mantido por compatibilidade de dados).
     contract_renewal: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    # Impressão: tipo de máquina (a4_mono | a4_color | a3_mono | a3_color | mixed)
+    printer_type: Mapped[str] = mapped_column(String(20), default="")
     printer_count: Mapped[int] = mapped_column(Integer, default=0)
+    # Franquia mensal de páginas inclusa no contrato (sem excedente)
     monthly_volume_mono: Mapped[int] = mapped_column(Integer, default=0)
     monthly_volume_color: Mapped[int] = mapped_column(Integer, default=0)
+    # Outsourcing de TI: produto, quantidade e especificações
+    it_product: Mapped[str] = mapped_column(String(255), default="")
+    it_quantity: Mapped[int] = mapped_column(Integer, default=0)
+    it_specs: Mapped[str] = mapped_column(Text, default="")
 
     converted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     converted_contact_id: Mapped[uuid.UUID | None] = mapped_column(

@@ -44,9 +44,14 @@ def lead_payload(lead: Lead, **extra: Any) -> dict[str, Any]:
         "interest": str(lead.interest),
         "current_provider": lead.current_provider,
         "contract_renewal": lead.contract_renewal.isoformat() if lead.contract_renewal else "",
+        "printer_type": lead.printer_type,
         "printer_count": lead.printer_count,
         "monthly_volume_mono": lead.monthly_volume_mono,
         "monthly_volume_color": lead.monthly_volume_color,
+        "it_product": lead.it_product,
+        "it_quantity": lead.it_quantity,
+        "city": lead.city,
+        "state": lead.state,
         **extra,
     }
 

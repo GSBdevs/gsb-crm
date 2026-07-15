@@ -10,7 +10,17 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Activity, Contact, Lead, LeadStatus, Opportunity, PipelineStage
+from app.models import (
+    Account,
+    AccountStatus,
+    Activity,
+    Contact,
+    Lead,
+    LeadStatus,
+    Machine,
+    Opportunity,
+    PipelineStage,
+)
 from app.models.pipeline import BillingType
 
 
@@ -92,17 +102,13 @@ async def summary(db: AsyncSession) -> dict:
         )
     )
 
-    # Contratos concorrentes vencendo em até 90 dias — janela quente de prospecção
-    renewals_next_90d = await db.scalar(
+    # Base instalada: clientes com contrato vigente e máquinas em campo
+    active_accounts = await db.scalar(
         select(func.count())
-        .select_from(Lead)
-        .where(
-            Lead.status.in_([LeadStatus.NEW, LeadStatus.QUALIFIED]),
-            Lead.contract_renewal.is_not(None),
-            Lead.contract_renewal >= today,
-            Lead.contract_renewal <= today + timedelta(days=90),
-        )
+        .select_from(Account)
+        .where(Account.status == AccountStatus.ACTIVE)
     )
+    machines_total = await db.scalar(select(func.count()).select_from(Machine))
 
     return {
         "open_leads": open_leads or 0,
@@ -110,7 +116,8 @@ async def summary(db: AsyncSession) -> dict:
         "open_opportunities": open_opps[0] or 0,
         "open_value": float(open_opps[1] or 0),
         "mrr_open": float(mrr_open or 0),
-        "renewals_next_90d": renewals_next_90d or 0,
+        "active_accounts": active_accounts or 0,
+        "machines_total": machines_total or 0,
         "won_value_month": won_month,
         "activities_due_today": due_today,
         "activities_overdue": overdue,

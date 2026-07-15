@@ -38,9 +38,14 @@ _LEAD_FIELDS = [
     "status",
     "interest",
     "current_provider",
+    "printer_type",
     "printer_count",
     "monthly_volume_mono",
     "monthly_volume_color",
+    "it_product",
+    "it_quantity",
+    "city",
+    "state",
 ]
 _OPP_FIELDS = [
     "title",

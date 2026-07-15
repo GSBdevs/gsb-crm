@@ -21,6 +21,7 @@ from app.core.security import hash_password  # noqa: E402
 from app.models import (  # noqa: E402
     Account,
     AccountSize,
+    AccountStatus,
     Activity,
     ActivityType,
     Base,
@@ -29,6 +30,7 @@ from app.models import (  # noqa: E402
     Lead,
     LeadInterest,
     LeadStatus,
+    Machine,
     Notification,
     Opportunity,
     PipelineStage,
@@ -42,20 +44,29 @@ from app.models import (  # noqa: E402
 ADMIN_EMAIL = "admin@gruposb.com"
 ADMIN_PASSWORD = "admin123"
 
+# Funil real GrupoSB: contato → especificação → proposta → contrato → início
 STAGES = [
-    ("Prospecção", 10, "#a1a1aa", False, False),
-    ("Qualificação", 25, "#fde047", False, False),
-    ("Proposta", 50, "#facc15", False, False),
-    ("Negociação", 75, "#f59e0b", False, False),
-    ("Fechado — Ganhou", 100, "#34d399", True, False),
-    ("Fechado — Perdeu", 0, "#f87171", False, True),
+    ("Novo contato", 10, "#a1a1aa", False, False),
+    ("Especificação", 30, "#fde047", False, False),
+    ("Proposta enviada", 55, "#facc15", False, False),
+    ("Contrato", 80, "#f59e0b", False, False),
+    ("Contrato iniciado", 100, "#34d399", True, False),
+    ("Perdido", 0, "#f87171", False, True),
 ]
 
-# nome, domínio, setor, porte, cnpj, cidade, UF
+# nome, domínio, setor, porte, status, cnpj, cidade, UF
 ACCOUNTS = [
-    ("Escritório Valente & Rocha Advogados", "valenterocha.adv.br", "Jurídico", AccountSize.M, "12.345.678/0001-90", "Campinas", "SP"),
-    ("Colégio Horizonte Azul", "horizonteazul.edu.br", "Educação", AccountSize.L, "23.456.789/0001-01", "São Paulo", "SP"),
-    ("Clínica Vida Plena", "vidaplena.med.br", "Saúde", AccountSize.M, "34.567.890/0001-12", "Jundiaí", "SP"),
+    ("Escritório Valente & Rocha Advogados", "valenterocha.adv.br", "Jurídico", AccountSize.M, AccountStatus.PROSPECT, "12.345.678/0001-90", "Campinas", "SP"),
+    ("Colégio Horizonte Azul", "horizonteazul.edu.br", "Educação", AccountSize.L, AccountStatus.ACTIVE, "23.456.789/0001-01", "São Paulo", "SP"),
+    ("Clínica Vida Plena", "vidaplena.med.br", "Saúde", AccountSize.M, AccountStatus.PROSPECT, "34.567.890/0001-12", "Jundiaí", "SP"),
+    ("Gráfica PrintMax", "printmax.com.br", "Gráfica", AccountSize.S, AccountStatus.INACTIVE, "45.678.901/0001-23", "Sorocaba", "SP"),
+]
+
+# conta (índice), nome da máquina, número de série, observações
+MACHINES = [
+    (1, "Multifuncional A3 Color — Recepção", "GSB-A3C-88213", "Instalada em 09/07/2026"),
+    (1, "Impressora A4 Mono — Secretaria", "GSB-A4M-11402", ""),
+    (1, "Impressora A4 Mono — Coordenação", "GSB-A4M-11407", ""),
 ]
 
 CONTACTS = [
@@ -66,21 +77,34 @@ CONTACTS = [
     ("Juliana", "Ribeiro", "juliana.ribeiro@gmail.com", "(21) 99887-7665", None),
 ]
 
-# nome, email, empresa, origem, status, score, interesse, fornecedor atual,
-# renovação (dias a partir de hoje; None = desconhecida), nº impressoras, vol. mono, vol. color
+# nome, email, empresa, cnpj, cidade, UF, origem, status, interesse, fornecedor atual,
+# tipo de máquina, nº impressoras, franquia mono, franquia color,
+# produto TI, qtd TI, especificações TI
 LEADS = [
-    ("Carlos Ferreira", "carlos@contabilferreira.com.br", "Contábil Ferreira", "site",
-     LeadStatus.NEW, 35, LeadInterest.PRINTER_RENTAL, "Simpress", 75, 6, 9000, 800),
-    ("Ana Beatriz Lima", "ana.lima@constronorte.com.br", "Constrói Norte", "indicação",
-     LeadStatus.QUALIFIED, 78, LeadInterest.BOTH, "Selbetti", 40, 14, 22000, 3500),
-    ("Roberto Tanaka", "roberto@fastlog.com.br", "FastLog Transportes", "linkedin",
-     LeadStatus.QUALIFIED, 64, LeadInterest.IT_OUTSOURCING, "TI interna", None, 0, 0, 0),
-    ("Patrícia Gomes", "patricia@bellamoda.com.br", "Bella Moda", "evento",
-     LeadStatus.NEW, 28, LeadInterest.PRINTER_RENTAL, "", 160, 3, 2500, 1200),
-    ("Eduardo Santos", "eduardo@agrovale.agr.br", "AgroVale", "site",
-     LeadStatus.LOST, 15, LeadInterest.PRINTER_RENTAL, "Copimaq", None, 8, 12000, 400),
-    ("Luiza Martins", "luiza@imobiliariacentral.com.br", "Imobiliária Central", "instagram",
-     LeadStatus.NEW, 45, LeadInterest.BOTH, "", 85, 5, 6000, 2000),
+    ("Carlos Ferreira", "carlos@contabilferreira.com.br", "Contábil Ferreira",
+     "56.789.012/0001-34", "Campinas", "SP", "site",
+     LeadStatus.NEW, LeadInterest.PRINTER_RENTAL, "Simpress",
+     "a4_mono", 6, 9000, 800, "", 0, ""),
+    ("Ana Beatriz Lima", "ana.lima@constronorte.com.br", "Constrói Norte",
+     "67.890.123/0001-45", "São Paulo", "SP", "indicação",
+     LeadStatus.QUALIFIED, LeadInterest.BOTH, "Selbetti",
+     "mixed", 14, 22000, 3500, "Notebooks Dell Latitude", 10, "i5, 16 GB RAM, SSD 512 GB"),
+    ("Roberto Tanaka", "roberto@fastlog.com.br", "FastLog Transportes",
+     "78.901.234/0001-56", "Barueri", "SP", "linkedin",
+     LeadStatus.QUALIFIED, LeadInterest.IT_OUTSOURCING, "TI interna",
+     "", 0, 0, 0, "Desktops + monitores", 25, "i3, 8 GB RAM, monitor 24\""),
+    ("Patrícia Gomes", "patricia@bellamoda.com.br", "Bella Moda",
+     "89.012.345/0001-67", "Campinas", "SP", "evento",
+     LeadStatus.NEW, LeadInterest.PRINTER_RENTAL, "",
+     "a4_color", 3, 2500, 1200, "", 0, ""),
+    ("Eduardo Santos", "eduardo@agrovale.agr.br", "AgroVale",
+     "90.123.456/0001-78", "Ribeirão Preto", "SP", "site",
+     LeadStatus.LOST, LeadInterest.PRINTER_RENTAL, "Copimaq",
+     "a3_mono", 8, 12000, 400, "", 0, ""),
+    ("Luiza Martins", "luiza@imobiliariacentral.com.br", "Imobiliária Central",
+     "01.234.567/0001-89", "Valinhos", "SP", "instagram",
+     LeadStatus.NEW, LeadInterest.BOTH, "",
+     "a4_color", 5, 6000, 2000, "Firewall + Wi-Fi corporativo", 1, "Cobertura p/ 2 andares"),
 ]
 
 
@@ -112,12 +136,22 @@ async def main() -> None:
         accounts = [
             Account(
                 name=name, domain=domain, industry=industry, size=size,
-                cnpj=cnpj, city=city, state=state,
+                status=account_status, cnpj=cnpj, city=city, state=state,
             )
-            for name, domain, industry, size, cnpj, city, state in ACCOUNTS
+            for name, domain, industry, size, account_status, cnpj, city, state in ACCOUNTS
         ]
         db.add_all(accounts)
         await db.flush()
+
+        db.add_all(
+            Machine(
+                account_id=accounts[account_index].id,
+                name=machine_name,
+                serial_number=serial,
+                notes=machine_notes,
+            )
+            for account_index, machine_name, serial, machine_notes in MACHINES
+        )
 
         contacts = []
         for first, last, email, phone, account_index in CONTACTS:
@@ -136,24 +170,28 @@ async def main() -> None:
 
         now = utcnow()
         leads = []
-        for (name, email, company, source, lead_status, score, interest, provider,
-             renewal_days, printers, vol_mono, vol_color) in LEADS:
+        for (name, email, company, cnpj, city, state, source, lead_status, interest,
+             provider, printer_type, printers, vol_mono, vol_color,
+             it_product, it_quantity, it_specs) in LEADS:
             leads.append(
                 Lead(
                     name=name,
                     email=email,
                     company=company,
+                    cnpj=cnpj,
+                    city=city,
+                    state=state,
                     source=source,
                     status=lead_status,
-                    score=score,
                     interest=interest,
                     current_provider=provider,
-                    contract_renewal=(
-                        (now + timedelta(days=renewal_days)).date() if renewal_days else None
-                    ),
+                    printer_type=printer_type,
                     printer_count=printers,
                     monthly_volume_mono=vol_mono,
                     monthly_volume_color=vol_color,
+                    it_product=it_product,
+                    it_quantity=it_quantity,
+                    it_specs=it_specs,
                     created_at=now - timedelta(days=random.randint(3, 150)),
                 )
             )
@@ -293,7 +331,7 @@ async def main() -> None:
                         "type": "notify",
                         "params": {
                             "title": "Novo lead: {name}",
-                            "body": "Origem: {source}. Interesse: {interest}. Score: {score}.",
+                            "body": "Origem: {source}. Interesse: {interest}. Empresa: {company}.",
                         },
                     },
                 ],

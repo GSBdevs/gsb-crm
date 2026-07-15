@@ -1,4 +1,4 @@
-from app.models.account import Account, AccountSize
+from app.models.account import Account, AccountSize, AccountStatus, Machine
 from app.models.activity import Activity, ActivityType
 from app.models.base import Base, TableBase, utcnow
 from app.models.contact import Contact
@@ -11,6 +11,7 @@ from app.models.workflow import WorkflowExecution, WorkflowRule
 __all__ = [
     "Account",
     "AccountSize",
+    "AccountStatus",
     "Activity",
     "ActivityType",
     "Base",
@@ -19,6 +20,7 @@ __all__ = [
     "Lead",
     "LeadInterest",
     "LeadStatus",
+    "Machine",
     "Notification",
     "NotificationRead",
     "Opportunity",

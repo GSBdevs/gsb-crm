@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.core.deps import DbSession, get_current_user
-from app.models import Opportunity, PipelineStage, utcnow
+from app.models import Account, AccountStatus, Opportunity, PipelineStage, utcnow
 from app.schemas.pipeline import (
     OpportunityBoardItem,
     OpportunityCreate,
@@ -31,6 +31,7 @@ async def _get_or_404(db: DbSession, opportunity_id: uuid.UUID) -> Opportunity:
 async def list_opportunities(
     db: DbSession,
     stage_id: uuid.UUID | None = None,
+    account_id: uuid.UUID | None = None,
     q: str = "",
     open_only: bool = False,
 ):
@@ -41,6 +42,8 @@ async def list_opportunities(
     )
     if stage_id:
         stmt = stmt.where(Opportunity.stage_id == stage_id)
+    if account_id:
+        stmt = stmt.where(Opportunity.account_id == account_id)
     if q:
         stmt = stmt.where(Opportunity.title.ilike(f"%{q}%"))
     if open_only:
@@ -115,6 +118,12 @@ async def move_opportunity(opportunity_id: uuid.UUID, data: OpportunityMoveIn, d
     if stage_changed:
         opp.probability = new_stage.probability
     opp.closed_at = utcnow() if (new_stage.is_won or new_stage.is_lost) else None
+
+    # Contrato fechado → a conta vira cliente ativo automaticamente.
+    if stage_changed and new_stage.is_won and opp.account_id:
+        account = await db.get(Account, opp.account_id)
+        if account is not None and account.status != AccountStatus.ACTIVE:
+            account.status = AccountStatus.ACTIVE
 
     siblings = list(
         (
