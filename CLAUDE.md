@@ -24,8 +24,12 @@ Dono: Arthur (gruposb.dev@gmail.com). Repo: https://github.com/GSBdevs/gsb-crm. 
 - **Windows**: psycopg async exige SelectorEventLoop → `app/core/aio.run()` e `python run.py` (não `uvicorn app.main:app` com Postgres). Celery: `--pool=solo`. Hot-reload só no modo SQLite.
 - Migrações autogeradas contra SQLite scratch (`DATABASE_URL=sqlite+aiosqlite:///<tmp> alembic revision --autogenerate`); adicionar `server_default` manualmente em colunas NOT NULL novas.
 - Notificações: broadcast tem `user_id` nulo; leitura por usuário via `notification_reads`.
-- Testes (`backend/tests/`, 13): sqlite in-memory, `conftest.py` monkeypatcha `database.session_factory` p/ o dispatch inline. Rodar: `.venv\Scripts\python -m pytest`.
+- Testes (`backend/tests/`, 14): sqlite in-memory, `conftest.py` monkeypatcha `database.session_factory` p/ o dispatch inline. Rodar: `.venv\Scripts\python -m pytest`.
 - Frontend: paginação `Page<T>`; client `lib/api.ts` faz refresh single-flight e redirect p/ /login em 401.
+- **Datas**: schemas Out usam `UTCDateTime` (`schemas/common.py`) — SQLite devolve naive e sem isso o JSON sai sem offset (3h de erro no browser). No front, datas puras (`YYYY-MM-DD`) passam por `parseDate` de `lib/utils.ts` (parse local, evita off-by-one).
+- **Dialogs de formulário**: remontar com `key` ao abrir (padrão usado em leads/pipeline/atividades/workflows) — sem isso o estado da abertura anterior vaza.
+- Login tem rate-limit por IP em memória (`LOGIN_MAX_FAILURES`/`LOGIN_WINDOW_SECONDS`); só falhas contam. Com `ENV != dev` e SECRET_KEY de dev a API recusa subir.
+- **Origem única**: `FRONTEND_DIST=frontend/dist` faz a API servir a SPA (sem CORS). `API_HOST=0.0.0.0` expõe na rede; `serve-lan.ps1` na raiz builda e sobe tudo.
 
 ## Comandos
 
@@ -41,6 +45,6 @@ frontend: npm run dev | npm run build
 
 model → schemas → router (padrão `accounts.py`) → `api/router.py` → migração → teste → `types.ts` → página → rota em `App.tsx` → `NAV` no `app-shell.tsx`. Automação: evento em `TRIGGERS` + `events.dispatch(...)`.
 
-## Estado (2026-07-03)
+## Estado (2026-07-14)
 
-MVP completo dos 7 passos do PDF de decisão + tema amarelo + domínio de impressoras/TI + fila Celery validada e2e. Pendências: hot-reload Windows+Postgres, SMTP simples, sem multi-tenancy. Arthur vai otimizar o visual com outras ferramentas — manter tokens/estrutura do tema estáveis.
+MVP completo + rodada de correções e polish: bugs de data (UTC/off-by-one) corrigidos na raiz, dialogs com remount por `key`, rodapé fixo nos forms, notificação individual clicável, gráficos tematizados, sidebar seccionada, rate-limit de login, modo origem única p/ LAN (`serve-lan.ps1`) e README com deploy gratuito (Render+Neon; Cloudflare Tunnel p/ acesso da equipe). Pendências: hot-reload Windows+Postgres, SMTP simples, sem multi-tenancy, sem UI de admin de usuários, rate-limit por processo. Tokens do tema (preto/cinza/amarelo) continuam a base visual — evoluções pontuais ok, sem trocar a paleta.

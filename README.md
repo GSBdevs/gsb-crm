@@ -53,13 +53,62 @@ npm run dev              # http://localhost:5173
 
 ```powershell
 cd backend
-.venv\Scripts\python -m pytest        # 13 testes: auth (rotação/revogação), leads+conversão,
+.venv\Scripts\python -m pytest        # 14 testes: auth (rotação/revogação/rate-limit), leads+conversão,
                                       # kanban, workflows, notificações por usuário, relatórios
 cd ..\frontend
 npm run build                         # type-check (tsc -b) + build Vite
 ```
 
 Teste manual da fila: com API + worker rodando, crie um lead na UI — o workflow "Novo lead → tarefa de follow-up" deve gerar atividade e notificação via Redis/Celery (veja o log do worker). Leads com `printer_count >= 10` também disparam "Lead prioritário".
+
+## Rodando na rede local (teste real com a equipe)
+
+O modo **origem única** faz a própria API servir o frontend buildado — um único
+host:porta para expor, sem CORS:
+
+```powershell
+.\serve-lan.ps1     # builda o frontend e sobe tudo em http://<ip-da-maquina>:8000
+```
+
+Uma vez, em PowerShell **como administrador**, libere a porta apenas no perfil privado:
+
+```powershell
+New-NetFirewallRule -DisplayName "GrupoSB CRM" -Direction Inbound -Protocol TCP -LocalPort 8000 -Action Allow -Profile Private
+```
+
+O que já protege esse modo: JWT com expiração curta + rotação de refresh, Argon2id,
+rate-limit de login por IP, rotas 100% autenticadas, sem cadastro aberto
+(admin cria usuários via `POST /api/v1/users`). Checklist antes de expor:
+
+1. `SECRET_KEY` forte no `backend/.env` (`python -c "import secrets; print(secrets.token_urlsafe(48))"`)
+   e `ENV=staging` — com chave de dev e `ENV != dev` a API se recusa a subir.
+2. Troque a senha do seed (`admin123`) e crie um usuário por pessoa.
+3. Prefira Postgres (compose) a SQLite quando houver mais de um usuário simultâneo.
+
+**Limitação:** é HTTP puro — adequado a rede interna confiável. Para HTTPS/acesso
+de fora do escritório sem custo, use um túnel com autenticação na borda:
+
+- **Cloudflare Tunnel + Access** (plano Zero Trust gratuito até 50 usuários): `cloudflared`
+  roda na máquina do CRM, ninguém abre porta no roteador, e o time faz login
+  (código por email) antes de a requisição chegar ao app. Melhor opção para a empresa.
+- **Tailscale** (gratuito até 6 usuários): VPN mesh; o CRM fica acessível pelo IP
+  do tailnet só para quem está na rede. Ótimo para um piloto pequeno.
+
+## Deploy gratuito na nuvem (cenário jul/2026)
+
+| Peça | Serviço | Free tier | Observações |
+|---|---|---|---|
+| API + frontend | **Render** (web service) | 512 MB RAM | Dorme após 15 min ocioso (cold start de ~30–60 s); use o modo origem única (`FRONTEND_DIST`) num serviço só |
+| Postgres | **Neon** | 0,5 GB, scale-to-zero | Sem pausa por inatividade (Supabase pausa após 1 semana) |
+| Redis/fila | **Upstash** | 500K comandos/mês | Para poucos workflows serve; mais simples: `WORKFLOWS_INLINE=true` e dispensar worker/Redis |
+| Frontend isolado (opcional) | Cloudflare Pages / Vercel / Netlify | Generoso | Só faz sentido se separar do backend; exige CORS configurado |
+
+Stack recomendada para começar de graça: **Render (API servindo a SPA) + Neon +
+`WORKFLOWS_INLINE=true`** — um serviço, um banco, zero worker. Alternativas que
+saíram do jogo: Fly.io e Koyeb encerraram os planos gratuitos.
+
+> Importante: o free tier do Render hiberna — para uso interno diário a melhor
+> relação custo/benefício continua sendo a máquina local + Cloudflare Tunnel.
 
 ## Domínio: locação de impressoras & outsourcing de TI
 
@@ -124,3 +173,16 @@ Notas do Windows: psycopg async exige SelectorEventLoop (ver `app/core/aio.py` e
 - Hot-reload do uvicorn no Windows apenas no modo SQLite (o reloader perde o loop Selector).
 - Ação `send_email` usa SMTP simples (configure `SMTP_*` no `.env`); sem fila de retry própria.
 - Sem multi-tenancy/escopo por usuário nos dados (adequado ao time atual).
+- Rate-limit de login é em memória (por processo) — suficiente p/ 1 instância; com múltiplas réplicas, mover para Redis.
+- Sem UI de administração de usuários (criação via `POST /api/v1/users` com token de admin, ou `/api/v1/docs`).
+- HTTPS não é terminado pela API — em rede local use Cloudflare Tunnel/Tailscale (seção acima) ou um proxy (Caddy).
+
+## Resolvido recentemente (jul/2026)
+
+- Datas puras exibidas com 1 dia a menos no fuso do Brasil (parse UTC no frontend).
+- Timestamps serializados sem offset UTC no modo SQLite (3 h de erro na exibição).
+- Dialogs reabertos herdavam estado do uso anterior (converter lead, nova oportunidade/atividade/regra).
+- Botões Salvar/Cancelar fora da dobra em formulários altos (rodapé agora é fixo).
+- Notificação individual agora pode ser marcada como lida (clique no item do sino).
+- Eixos/legendas dos gráficos ilegíveis no tema escuro.
+- Login sem rate-limit e SECRET_KEY de dev aceita fora de dev.
