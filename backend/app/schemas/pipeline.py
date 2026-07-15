@@ -1,9 +1,10 @@
 import uuid
-from datetime import date, datetime
+from datetime import date
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.pipeline import BillingType, ServiceType
+from app.schemas.common import UTCDateTime
 
 
 class StageCreate(BaseModel):
@@ -79,7 +80,7 @@ class OpportunityOut(BaseModel):
     probability: int
     expected_close: date | None
     position: int
-    closed_at: datetime | None
+    closed_at: UTCDateTime | None
     stage_id: uuid.UUID
     contact_id: uuid.UUID | None
     account_id: uuid.UUID | None
@@ -87,8 +88,8 @@ class OpportunityOut(BaseModel):
     billing_type: BillingType
     contract_months: int
     total_value: float
-    created_at: datetime
-    updated_at: datetime
+    created_at: UTCDateTime
+    updated_at: UTCDateTime
 
 
 class OpportunityBoardItem(OpportunityOut):

@@ -1,9 +1,9 @@
 import uuid
-from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.models.user import UserRole
+from app.schemas.common import UTCDateTime
 
 
 class LoginIn(BaseModel):
@@ -50,4 +50,4 @@ class UserOut(BaseModel):
     full_name: str
     role: UserRole
     is_active: bool
-    created_at: datetime
+    created_at: UTCDateTime

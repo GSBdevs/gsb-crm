@@ -1,10 +1,10 @@
 import uuid
-from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
 from app.models.account import AccountSize
+from app.schemas.common import UTCDateTime
 
 
 class AccountCreate(BaseModel):
@@ -41,5 +41,5 @@ class AccountOut(BaseModel):
     city: str
     state: str
     custom_fields: dict[str, Any]
-    created_at: datetime
-    updated_at: datetime
+    created_at: UTCDateTime
+    updated_at: UTCDateTime

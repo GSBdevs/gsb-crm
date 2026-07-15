@@ -1,9 +1,9 @@
 import uuid
-from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
 from app.models.activity import ActivityType
+from app.schemas.common import UTCDateTime
 
 
 class ActivityCreate(BaseModel):
@@ -12,14 +12,14 @@ class ActivityCreate(BaseModel):
     notes: str = ""
     entity_type: str | None = None  # lead | contact | opportunity
     entity_id: uuid.UUID | None = None
-    due_at: datetime | None = None
+    due_at: UTCDateTime | None = None
 
 
 class ActivityUpdate(BaseModel):
     type: ActivityType | None = None
     title: str | None = None
     notes: str | None = None
-    due_at: datetime | None = None
+    due_at: UTCDateTime | None = None
     done: bool | None = None  # true seta done_at=agora; false limpa
 
 
@@ -33,7 +33,7 @@ class ActivityOut(BaseModel):
     entity_type: str | None
     entity_id: uuid.UUID | None
     entity_label: str | None = None
-    due_at: datetime | None
-    done_at: datetime | None
+    due_at: UTCDateTime | None
+    done_at: UTCDateTime | None
     user_id: uuid.UUID | None
-    created_at: datetime
+    created_at: UTCDateTime

@@ -1,8 +1,9 @@
 import uuid
-from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, EmailStr
+
+from app.schemas.common import UTCDateTime
 
 
 class ContactCreate(BaseModel):
@@ -40,5 +41,5 @@ class ContactOut(BaseModel):
     score: int
     custom_fields: dict[str, Any]
     account_id: uuid.UUID | None
-    created_at: datetime
-    updated_at: datetime
+    created_at: UTCDateTime
+    updated_at: UTCDateTime

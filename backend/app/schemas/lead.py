@@ -1,9 +1,10 @@
 import uuid
-from datetime import date, datetime
+from datetime import date
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.lead import LeadInterest, LeadStatus
+from app.schemas.common import UTCDateTime
 from app.schemas.contact import ContactOut
 from app.schemas.pipeline import OpportunityOut
 
@@ -62,11 +63,11 @@ class LeadOut(BaseModel):
     printer_count: int
     monthly_volume_mono: int
     monthly_volume_color: int
-    converted_at: datetime | None
+    converted_at: UTCDateTime | None
     converted_contact_id: uuid.UUID | None
     converted_opportunity_id: uuid.UUID | None
-    created_at: datetime
-    updated_at: datetime
+    created_at: UTCDateTime
+    updated_at: UTCDateTime
 
 
 class LeadConvertIn(BaseModel):

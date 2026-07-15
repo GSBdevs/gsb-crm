@@ -1,8 +1,9 @@
 import uuid
-from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
+
+from app.schemas.common import UTCDateTime
 
 ConditionOp = Literal[
     "eq", "neq", "gt", "gte", "lt", "lte", "contains", "not_contains", "is_empty", "not_empty"
@@ -45,8 +46,8 @@ class WorkflowRuleOut(BaseModel):
     conditions: list[dict[str, Any]]
     actions: list[dict[str, Any]]
     is_active: bool
-    created_at: datetime
-    updated_at: datetime
+    created_at: UTCDateTime
+    updated_at: UTCDateTime
 
 
 class WorkflowExecutionOut(BaseModel):
@@ -59,4 +60,4 @@ class WorkflowExecutionOut(BaseModel):
     entity_id: uuid.UUID | None
     status: str
     detail: str
-    executed_at: datetime
+    executed_at: UTCDateTime

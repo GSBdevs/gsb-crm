@@ -1,7 +1,8 @@
 import uuid
-from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
+
+from app.schemas.common import UTCDateTime
 
 
 class NotificationOut(BaseModel):
@@ -12,7 +13,7 @@ class NotificationOut(BaseModel):
     title: str
     body: str
     is_read: bool
-    created_at: datetime
+    created_at: UTCDateTime
 
 
 class UnreadCountOut(BaseModel):
