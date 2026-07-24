@@ -17,10 +17,9 @@ async def lifespan(_app: FastAPI):
     if settings.env != "dev" and "dev-secret" in settings.secret_key:
         raise RuntimeError(
             "SECRET_KEY de desenvolvimento com ENV != dev. "
-            "Gere uma chave: python -c \"import secrets; print(secrets.token_urlsafe(48))\""
+            'Gere uma chave: python -c "import secrets; print(secrets.token_urlsafe(48))"'
         )
     if settings.auto_create_tables:
-        # Conveniência de dev (SQLite). Em produção, use Alembic e AUTO_CREATE_TABLES=false.
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
     yield
@@ -51,8 +50,7 @@ async def healthz():
     return {"status": "ok", "env": settings.env}
 
 
-# Modo origem única: com FRONTEND_DIST apontando para frontend/dist, a própria API
-# serve a SPA — um único host:porta para expor na rede, sem CORS.
+# Não sei como isso funcionou, muito obrigado indiano do youtube
 _dist = Path(settings.frontend_dist) if settings.frontend_dist else None
 if _dist is not None and (_dist / "index.html").is_file():
     app.mount("/assets", StaticFiles(directory=_dist / "assets"), name="spa-assets")
@@ -62,6 +60,10 @@ if _dist is not None and (_dist / "index.html").is_file():
         if full_path.startswith(("api/", "healthz")):
             raise HTTPException(status.HTTP_404_NOT_FOUND)
         candidate = _dist / full_path
-        if full_path and candidate.is_file() and candidate.resolve().is_relative_to(_dist.resolve()):
+        if (
+            full_path
+            and candidate.is_file()
+            and candidate.resolve().is_relative_to(_dist.resolve())
+        ):
             return FileResponse(candidate)
         return FileResponse(_dist / "index.html")
